@@ -20,3 +20,7 @@ _startpoint:
 	ldi r0, 0xAF
 	ASMerr_loop:
 		jmp ASMerr_loop
+
+.ramd
+.org 0x4c00
+.romd
