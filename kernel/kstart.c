@@ -15,6 +15,5 @@ void _kstart(){
         tty_putc('c');
         tty_putc('d');
         tty_putc('e');
-        tty_print_buffer();
     }
 }
