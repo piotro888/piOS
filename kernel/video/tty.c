@@ -84,3 +84,9 @@ void init_tty() {
     tty_print_buffer();
 }
 
+void tty_puts(const char* str) {
+    while(*str) {
+        tty_putc(*str);
+        str++;
+    }
+}
