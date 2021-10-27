@@ -1,6 +1,6 @@
 #include "kprintf.h"
 #include <video/tty.h>
-//#include <libk/stdarg.h>
+
 /* stdarg from gcc library */
 #include <stdarg.h>
 
@@ -57,6 +57,6 @@ int kprintf(const char* str, ...) {
         }
     }
  
-    //va_end(vlist);
+    va_end(vlist);
     return len;
 }
