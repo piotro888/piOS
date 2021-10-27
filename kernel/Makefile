@@ -9,6 +9,8 @@ AOBJS=\
 	boot.ao\
 	kstart.ao\
 	video/tty.ao\
+	irq/interrupt.ao\
+	irq/irq.ao\
 	libk/kprintf.ao
 
 .PHONY: all clean

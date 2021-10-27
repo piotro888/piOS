@@ -1,8 +1,12 @@
 .romd
 
-.rod magicnumber, 0xCAFE
+;.rod magicnumber, 0xCAFE
 
 ; begin of piOS ^^
+
+jmp _startpoint ; reset vector
+
+jmp interrupt_handler ; interrupt vector (0x1) -> irq/irq.s
 
 _startpoint:
 	; set up initial stack
