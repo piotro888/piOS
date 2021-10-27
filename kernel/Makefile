@@ -1,6 +1,7 @@
 CC := ~/opt/gcc-pcpu/bin/pcpu-unknown-elf-gcc 
 ASM := python3 ~/pcpu/toolchain/pas.py
 ASMCONV := python3 ~/pcpu/toolchain/asmconv.py
+SEND := python3 ../tools/send.py
 
 CFLAGS := -S -Wall -Wextra -pedantic -I.
 
@@ -8,14 +9,22 @@ AOBJS=\
 	boot.ao\
 	kstart.ao\
 	video/tty.ao\
+	libk/kprintf.ao
 
 .PHONY: all clean
 
 all: kernel.hex
 
+upload: kernel.pbl
+	$(SEND) build/kernel.pbl
+
+kernel.pbl: $(AOBJS)
+	cd build && cat $(AOBJS) > kernel.ao 
+	$(ASM) -b build/kernel.ao -o build/kernel.pbl
+
 kernel.hex: $(AOBJS)
 	cd build && cat $(AOBJS) > kernel.ao 
-	$(ASM) build/kernel.ao -o kernel.hex
+	$(ASM) build/kernel.ao -o build/kernel.hex
 
 %.ao: %.c
 	mkdir -p build/$(@D)
