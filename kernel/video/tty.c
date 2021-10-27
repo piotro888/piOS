@@ -35,7 +35,34 @@ void tty_scroll() {
     }
 }
 
+/* Advance cursor row with scroll handling */
+void tty_new_line() {
+    tty_cursor_row++;
+    if(tty_cursor_row == TTY_HEIGHT) {
+        tty_scroll();
+        tty_cursor_row--;
+        tty_print_buffer();
+    }
+}
+
+/* Handle all non-printable characters */
+void tty_handle_escapes(char c) {
+    switch(c) {
+        case '\n':
+            tty_new_line();
+            tty_cursor_col = 0;
+            break;
+        default:
+            break;
+    }
+}
+
 void tty_putc(char c) {
+    if(c < 32 || c >= 127) { // not-printable character
+        tty_handle_escapes(c);
+        return;
+    }
+
     // 4 msb - bg color | 4 b - fg color | 8 lsb - char code
     int char_value = (int) c | (tty_text_color<<8);
 
@@ -48,12 +75,7 @@ void tty_putc(char c) {
     tty_cursor_col++;
     if(tty_cursor_col == TTY_WIDTH) {
         tty_cursor_col = 0;
-        tty_cursor_row++;
-        if(tty_cursor_row == TTY_HEIGHT) {
-            tty_scroll();
-            tty_cursor_row--;
-            tty_print_buffer();
-        }
+        tty_new_line();
     }
 }
 
