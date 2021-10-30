@@ -11,6 +11,7 @@ AOBJS=\
 	irq/interrupt.ao\
 	irq/irq.ao\
 	libk/kprintf.ao\
+	driver/keyboard.ao\
 	video/tty.ao
 
 .PHONY: all clean
