@@ -1,5 +1,5 @@
 #include "kprintf.h"
-#include <video/tty.h>
+#include <driver/tty.h>
 
 /* stdarg from gcc library */
 #include <stdarg.h>

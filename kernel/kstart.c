@@ -3,7 +3,7 @@
  * (C) 2021 by Piotr Wegrzyn 
 */
 
-#include <video/tty.h>
+#include <driver/tty.h>
 #include <libk/kprintf.h>
 #include <irq/interrupt.h>
 

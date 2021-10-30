@@ -12,7 +12,7 @@ AOBJS=\
 	irq/irq.ao\
 	libk/kprintf.ao\
 	driver/keyboard.ao\
-	video/tty.ao
+	driver/tty.ao
 
 .PHONY: all clean
 
