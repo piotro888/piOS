@@ -41,6 +41,10 @@ void tty_new_line() {
     if(tty_cursor_row == TTY_HEIGHT) {
         tty_scroll();
         tty_cursor_row--;
+
+        for(int i=0; i<TTY_WIDTH; i++) // clear new line
+            tty_buffer[TTY_HEIGHT-1][i] = 0;
+
         tty_print_buffer();
     }
 }
