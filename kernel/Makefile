@@ -8,10 +8,10 @@ CFLAGS := -S -Wall -Wextra -pedantic -I.
 AOBJS=\
 	boot.ao\
 	kstart.ao\
-	video/tty.ao\
 	irq/interrupt.ao\
 	irq/irq.ao\
-	libk/kprintf.ao
+	libk/kprintf.ao\
+	video/tty.ao
 
 .PHONY: all clean
 
