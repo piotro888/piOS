@@ -34,12 +34,12 @@ interrupt_handler:
     ldo r0, r7, -10
     srs r0, 3 ; return program counter
     ; restore registers
-    ldo r0, r7, 0
-    ldo r1, r7, -3
-    ldo r2, r7, -4
-    ldo r3, r7, -5
-    ldo r4, r7, -6
-    ldo r5, r7, -7
-    ldo r6, r7, -8
+    ldo r0, r7, -3
+    ldo r1, r7, -4
+    ldo r2, r7, -5
+    ldo r3, r7, -6
+    ldo r4, r7, -7
+    ldo r5, r7, -8
+    ldo r6, r7, -9
     ; return from interrupt
     irt
