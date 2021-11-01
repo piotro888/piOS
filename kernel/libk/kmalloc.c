@@ -25,7 +25,7 @@ void* kmalloc(size_t size) {
             free_chunks++;
            
             if(free_chunks == size_in_chunks) {
-                ptr = (void*) (KERNEL_HEAP_SIZE + (current_chunk - size_in_chunks + 1)*CHUNK_SIZE);
+                ptr = (void*) (KERNEL_HEAP_START + (current_chunk - size_in_chunks + 1)*CHUNK_SIZE);
                 memory[current_chunk - size_in_chunks + 1] = size_in_chunks;
                 break;
             }
