@@ -4,12 +4,15 @@
 /* stdarg from gcc library */
 #include <stdarg.h>
 
-void print_number(unsigned int num) {
+void print_number(unsigned int num, unsigned int base) {
     char buff[20];
     int pos = 0;
     while(num) {
-        buff[pos++] = '0' + (char)(num%10);
-        num /= 10;
+        if(num % base < 10)
+            buff[pos++] = '0' + (char)(num%base);
+        else
+            buff[pos++] = 'a' + (char)((num%base)-10);
+        num /= base;
     }
     for(int i=0; i<pos/2; i++) {
         char swp = buff[i];
@@ -35,7 +38,12 @@ int kprintf(const char* str, ...) {
                 case 'i':
                     str++;
                     int i_param = va_arg(vlist, int);
-                    print_number(i_param);
+                    print_number(i_param, 10);
+                    break;
+                case 'x':
+                    str++;
+                    int x_param = va_arg(vlist, int);
+                    print_number(x_param, 16);
                     break;
                 case 's':
                     str++;
