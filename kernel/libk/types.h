@@ -13,4 +13,6 @@ typedef long int32_t;
 typedef unsigned int size_t;
 typedef unsigned int uint_fast_t;
 
+#define NULL 0
+
 #endif
