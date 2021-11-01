@@ -12,6 +12,8 @@ AOBJS=\
 	irq/irq.ao\
 	libk/kprintf.ao\
 	driver/keyboard.ao\
+	panic.ao\
+	libk/kmalloc.ao\
 	driver/tty.ao
 
 .PHONY: all clean
