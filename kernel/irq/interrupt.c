@@ -1,9 +1,11 @@
 #include <libk/kprintf.h>
+#include <driver/keyboard.h>
 
 /* Interrupt handler called from irq.s */
 void interrupt() {
-    int scancode = *((int*)3);
-    kprintf("irq scan:%d\n", scancode);
+    uint8_t scancode = *((int*)3);
+    //kprintf("irq scan:%d\n", scancode);
+    print_scancode(scancode);
 }
 
 /* Enable interrupts in CPU */
