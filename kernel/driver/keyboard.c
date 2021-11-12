@@ -3,6 +3,9 @@
 #define RELEASE_SCANCODE 0xF0
 #define EXTENDED_SCANCODE 0xE0
 
+#define LSHIFT_SCANCODE 0x12
+#define RSHIFT_SCANCODE 0x59
+
 const char printable_scancodes[] = {
     ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '\t', '`', 
     ' ', ' ', ' ', ' ', ' ', 'q', '1', ' ', ' ', ' ', 'z', 's', 'a', 'w', '2', ' ',
@@ -13,11 +16,34 @@ const char printable_scancodes[] = {
     ' ', ' ', ' ', ' ', ' ', ' ', '\b'
 };
 
+const char shift_scancodes[] = {
+    ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '\t', '~', 
+    ' ', ' ', ' ', ' ', ' ', 'Q', '!', ' ', ' ', ' ', 'Z', 'S', 'A', 'W', '@', ' ',
+    ' ', 'C', 'X', 'D', 'E', '$', '#', ' ', ' ', ' ', 'V', 'F', 'T', 'R', '%', ' ',
+    ' ', 'N', 'B', 'H', 'G', 'Y', '^', ' ', ' ', ' ', 'M', 'J', 'U', '&', '*', ' ',
+    ' ', '<', 'K', 'I', 'O', ')', '(', ' ', ' ', '>', '?', 'L', ':', 'P', '_', ' ',
+    ' ', ' ', '"', ' ', '{', '+', ' ', ' ', ' ', ' ', '\n', '}', ' ', '|', ' ', ' ',
+    ' ', ' ', ' ', ' ', ' ', ' ', '\b'
+};
+
 uint8_t prev_scancode = 0;
 
+#define STATE_SHIFT 1
+#define STATE_CAPS 2
+uint8_t keyboard_state = 0;
+
 void print_scancode (uint8_t scancode) {
-    if(prev_scancode != RELEASE_SCANCODE)
-        tty_putc(printable_scancodes[scancode]);
+    if(scancode == LSHIFT_SCANCODE || scancode == RSHIFT_SCANCODE) {
+        if(prev_scancode == RELEASE_SCANCODE)
+            keyboard_state &= ~STATE_SHIFT;
+        else  
+            keyboard_state |= STATE_SHIFT;
+    } else if(prev_scancode != RELEASE_SCANCODE && scancode != RELEASE_SCANCODE) {
+        if(keyboard_state & STATE_SHIFT)
+            tty_putc(shift_scancodes[scancode]);
+        else
+            tty_putc(printable_scancodes[scancode]);
+    }
     prev_scancode = scancode;
 }
 
