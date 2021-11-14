@@ -1,4 +1,5 @@
 #include <driver/tty.h>
+#include <fs/kbd.h>
 
 #define RELEASE_SCANCODE 0xF0
 #define EXTENDED_SCANCODE 0xE0
@@ -32,6 +33,10 @@ uint8_t prev_scancode = 0;
 #define STATE_CAPS 2
 uint8_t keyboard_state = 0;
 
+#define KEYB_BUFF_LEN 16
+char* buff[KEYB_BUFF_LEN];
+short buffptr = 0;
+
 void print_scancode (uint8_t scancode) {
     if(scancode == LSHIFT_SCANCODE || scancode == RSHIFT_SCANCODE) {
         if(prev_scancode == RELEASE_SCANCODE)
@@ -39,11 +44,14 @@ void print_scancode (uint8_t scancode) {
         else  
             keyboard_state |= STATE_SHIFT;
     } else if(prev_scancode != RELEASE_SCANCODE && scancode != RELEASE_SCANCODE) {
+        char outc;
         if(keyboard_state & STATE_SHIFT)
-            tty_putc(shift_scancodes[scancode]);
+            outc = shift_scancodes[scancode];
         else
-            tty_putc(printable_scancodes[scancode]);
+            outc = printable_scancodes[scancode];
+        
+        tty_putc(outc);
+        kbd_vfs_submit_char(outc);
     }
     prev_scancode = scancode;
 }
-
