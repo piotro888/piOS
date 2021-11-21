@@ -1,4 +1,5 @@
 #include "kmalloc.h"
+#include <panic.h>
 
 #define KERNEL_HEAP_START 0x7000
 #define KERNEL_HEAP_END 0xFFFF
