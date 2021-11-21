@@ -14,6 +14,7 @@ AOBJS=\
 	driver/keyboard.ao\
 	panic.ao\
 	libk/kmalloc.ao\
+	fs/tar.ao\
 	driver/tty.ao
 
 .PHONY: all clean
