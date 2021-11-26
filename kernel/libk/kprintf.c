@@ -7,6 +7,10 @@
 void print_number(unsigned int num, unsigned int base) {
     char buff[20];
     int pos = 0;
+
+    if(!num)
+        buff[pos++] = '0';
+
     while(num) {
         if(num % base < 10)
             buff[pos++] = '0' + (char)(num%base);
@@ -14,6 +18,7 @@ void print_number(unsigned int num, unsigned int base) {
             buff[pos++] = 'a' + (char)((num%base)-10);
         num /= base;
     }
+
     for(int i=0; i<pos/2; i++) {
         char swp = buff[i];
         buff[i] = buff[pos-i-1];
