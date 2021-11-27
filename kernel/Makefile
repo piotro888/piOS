@@ -11,6 +11,7 @@ AOBJS=\
 	irq/interrupt.ao\
 	irq/irq.ao\
 	libk/kprintf.ao\
+	libk/string.ao\
 	driver/keyboard.ao\
 	panic.ao\
 	libk/kmalloc.ao\
