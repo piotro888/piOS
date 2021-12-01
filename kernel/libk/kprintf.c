@@ -43,6 +43,17 @@ int kprintf(const char* str, ...) {
                 case 'i':
                     str++;
                     int i_param = va_arg(vlist, int);
+
+                    if(i_param < 0) {
+                        tty_putc('-');
+                        i_param *= -1;
+                    }
+                    
+                    print_number((unsigned int) i_param, 10);
+                    break;
+                case 'u':
+                    str++;
+                    i_param = va_arg(vlist, int);
                     print_number(i_param, 10);
                     break;
                 case 'x':
