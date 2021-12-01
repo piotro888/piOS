@@ -23,6 +23,10 @@ struct tar_t {
     uint8_t name_prefix[155];
 };
 
-uint8_t open(char* path);
+#define ENOTFOUND 5
+#define ETOOMANYFILES 6
+#define EINVALIDFD 7
+
+int8_t open(char* path);
 
 #endif

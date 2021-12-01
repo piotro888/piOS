@@ -5,7 +5,15 @@
 
 #define SECTOR_SIZE 0x200
 #define TEMP_TAR_BEGIN 0xb000
+#define MAX_FILES 16
 
+struct fd_t {
+    struct tar_t* header;
+    unsigned int seek;
+};
+
+struct fd_t files[MAX_FILES];
+uint16_t in_use;
 
 int convert_octal(char* octal)  {
     int res = 0;
@@ -46,6 +54,31 @@ void* search_file(char* name) {
     return NULL;
 }
 
-uint8_t open(char* path) {
+int8_t open(char* path) {
+    struct tar_t* file_header = search_file(path);
     
+    if(file_header == NULL)
+        return -ENOTFOUND;
+    
+    int fd = -1;
+    for(int i=0; i<MAX_FILES; i++) {
+        if(!(in_use & (1<<i))) {
+            in_use |= (1<<i);
+            fd = i;
+            files[i].header = file_header;
+            files[i].seek = 0;
+        }
+    }
+    if(fd == -1)
+        return -ETOOMANYFILES;
+    return fd;
+}
+
+int8_t close(uint8_t fd) {
+    if(fd >= MAX_FILES || !(in_use & (1<<fd)))
+        return -EINVALIDFD;
+    
+    in_use ^= (1<<fd);
+    
+    return 0;
 }
