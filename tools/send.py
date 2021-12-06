@@ -20,12 +20,13 @@ if(len(sys.argv) > 1):
 else:
     data = input("send: ") #ach.. this doesn't work when reading > 4095 chars! (see linux termios icannon)
 
-it = 0
+it = 0; pit=0
 for c in data:
     ser.write(bytes([ord(c)]))
     it = it+1
-    if(it%int(len(data)/100) == 0):
-        print(int(it/int(len(data)/100)), end = " ", flush = True)
+    if(int(it/(len(data)/100)) != int(pit/(len(data)/100))) :
+        print(int(it/(len(data)/100)), end = " ", flush = True)
+    pit = it
     sleep(0.002)
 print()
 

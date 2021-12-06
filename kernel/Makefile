@@ -2,6 +2,7 @@ CC := ~/opt/gcc-pcpu/bin/pcpu-unknown-elf-gcc
 ASM := python3 ~/pcpu/toolchain/pas.py
 ASMCONV := python3 ~/pcpu/toolchain/asmconv.py
 SEND := python3 ../tools/send.py
+PEMU := ~/pcpu/toolchain/pcpuemu
 
 CFLAGS := -S -Wall -Wextra -pedantic -I.
 
@@ -44,3 +45,6 @@ kernel.hex: $(AOBJS)
 
 clean:
 	rm -rf build/
+
+emu: kernel.hex kernel.pbl
+	$(PEMU) build/kernel.hex build/kernel.pbl
