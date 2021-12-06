@@ -7,6 +7,7 @@
 #include <irq/interrupt.h>
 #include <libk/kmalloc.h>
 #include <libk/kprintf.h>
+#include <fs/tar.h>
 
 /* C entry point for kernel */
 void _kstart() {
@@ -21,5 +22,6 @@ void _kstart() {
     kprintf("enabling interrupts\n");
     int_enable();
     kprintf("init done.\n");
-    search_file();
+    
+    tar_test();
 }

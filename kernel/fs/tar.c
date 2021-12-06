@@ -35,21 +35,15 @@ void* search_file(char* name) {
            header = (void*) header + SECTOR_SIZE;
            continue;
         }
-
-        kprintf("addr:%d", header->ustarzz);
-        kprintf("name:%s", header->name);
-
+       
         if(strncmp((char*)header->ustarzz, "ustar", 5))
             panic("tarFS: invalid header");
 
         if(strcmp(header->name, name) == 0) //TODO: long file names (name_prefix)
             return header;
-
-        // 1 sector for header + ceil(size)
+        
         int sectors_skip = (convert_octal(header->size)+SECTOR_SIZE-1)/SECTOR_SIZE + 1;
-        kprintf(" content %d", convert_octal(header->size));
         header = (void*) header + SECTOR_SIZE*sectors_skip;
-        kprintf("CH %d", header);
     }
     return NULL;
 }
@@ -67,6 +61,7 @@ int8_t open(char* path) {
             fd = i;
             files[i].header = file_header;
             files[i].seek = 0;
+            break;
         }
     }
     if(fd == -1)
@@ -81,4 +76,52 @@ int8_t close(uint8_t fd) {
     in_use ^= (1<<fd);
     
     return 0;
+}
+
+size_t read(int8_t fd, void* buff, size_t size) {
+    if(fd >= MAX_FILES || !(in_use & (1<<fd)))
+        return -EINVALIDFD;
+    
+    size_t file_size = convert_octal(files[fd].header->size);
+    if(files[fd].seek >= file_size)
+        return 0;
+
+    if(files[fd].seek+size > file_size)
+        size = file_size - files[fd].seek;
+
+    char* data = (char*) files[fd].header + SECTOR_SIZE + files[fd].seek;
+
+    char* buffc = (char*) buff;
+    for(size_t i=0; i<size; i++) {
+        *buffc++ = *data++;
+    }
+    
+    files[fd].seek += size;
+    return size;
+}
+
+size_t seek(int8_t fd, size_t seek) {
+    if(fd >= MAX_FILES || !(in_use & (1<<fd)))
+        return -EINVALIDFD;
+
+    files[fd].seek = seek;
+    
+    return seek;
+}
+
+void tar_test() {
+    int fd_1 = open("boot.s");
+    kprintf("fd: %d", fd_1);
+    int fd_2 = open("panic.c");
+    kprintf("\nfd_p: %d", fd_2);
+    close(fd_1);
+    int fd_3 = open("boot.s");
+    kprintf("\nfd3: %d", fd_3);
+    kprintf("Reading boot.s:\n");
+    char buff[256];
+    int rs = read(fd_3, buff, 128);
+    kprintf("Read %d chars: %s", rs, buff);
+    rs = read(fd_3, buff, 10);
+    buff[11] = '\0';
+    kprintf("\nand 10 more...\n %s", buff);
 }

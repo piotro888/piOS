@@ -27,6 +27,13 @@ struct tar_t {
 #define ETOOMANYFILES 6
 #define EINVALIDFD 7
 
+#include <libk/types.h>
+
 int8_t open(char* path);
+int8_t close(uint8_t fd);
+size_t read(int8_t fd, void* buff, size_t size);
+size_t seek(int8_t fd, size_t seek);
+
+void tar_test();
 
 #endif
