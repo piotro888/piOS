@@ -6,6 +6,8 @@
 
 #define SD_DEVICE_NO 0
 
+#define SECTOR_SIZE 512
+
 #define CMD0 0
 #define CMD0_CRC 0x4A
 #define CMD8 8
@@ -15,13 +17,14 @@
 #define ACMD41 41
 #define ACMD41_ARG_HC 0x4000
 #define CMD58 58
+#define CMD16 16
 
 #define STATUS_NULL 0x0
 #define STATUS_IDLE 0x1
 #define STATUS_ILLEGAL_CMD 0x5
 
 #define SD_RESP_TIMEOUT 8
-#define SD_INIT_TIMEOUT 16
+#define SD_INIT_TIMEOUT 100
 
 #define OCR_1_3V3 0x10
 #define OCR_0_HC 0x80
@@ -57,7 +60,7 @@ void sd_hc_init() {
     uint8_t rb[5];
 
     // ACMD41 sequence with HCSD arg
-    uint8_t timeout = SD_RESP_TIMEOUT;
+    uint8_t timeout = SD_INIT_TIMEOUT;
     while (timeout--) {
         sd_command(ACMD_PRE_CMD55, 0, 0, 0, &r, 1);
         if(r != STATUS_IDLE)
@@ -68,14 +71,23 @@ void sd_hc_init() {
             break;
         else if(r != STATUS_IDLE)
             panic("driver/sd: illegal response to acmd41");
+        else if(timeout == 0)
+            panic("driver/sd: timeout while intializing");
     }
 
     sd_command(CMD58, 0, 0, 0, rb, 5);
-
-    if(!(rb[1] | OCR_1_3V3))
+    if(rb[0] != STATUS_NULL )
+        panic("driver/sd: illegal response to cmd58");
+    if(!(rb[2] & OCR_1_3V3))
         panic("driver/sd: volatage range not supported");
-    if(!(rb[0] | OCR_0_HC))
+    if(!(rb[1] & OCR_0_HC))
         panic("driver/sd: not hc card");
+
+    // set block size to 512
+    sd_command(CMD16, 0, SECTOR_SIZE, 0, &r, 1);
+    if(r != STATUS_NULL)
+        panic("driver/sd: illegal response to cmd16");
+}
 }
 
 void sd_init() {
