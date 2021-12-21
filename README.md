@@ -1,7 +1,7 @@
 # piOS
 Operating system for my custom processor - [pcpu](https://github.com/piotro888/pcpu)
 
-This is my self-educational project. Homemade  OS created because I wanted to make something fun for my processor, and got interested in operating systems.
+This is my self-educational project. Homemade OS created because I wanted to make something fun for my processor, and got interested in operating systems.
 
 **In development**, don't expect too much from it ***yet***.
 
@@ -10,7 +10,8 @@ This is my self-educational project. Homemade  OS created because I wanted to ma
 * VGA driver
 * PS/2 Keyboard
 * Kernel library: printf, malloc, strings
-* TAR filesystem support (without device driver)
+* SD card driver over SPI bus
+* TAR filesystem support
 
 Not much yet, but the os is in early development stage now. I will keep the list this updated.
 
