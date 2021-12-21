@@ -14,6 +14,8 @@ AOBJS=\
 	libk/kprintf.ao\
 	libk/string.ao\
 	driver/keyboard.ao\
+	driver/spi.ao\
+	driver/sd.ao\
 	panic.ao\
 	libk/kmalloc.ao\
 	fs/tar.ao\

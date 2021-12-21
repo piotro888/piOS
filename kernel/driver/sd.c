@@ -18,6 +18,7 @@
 #define ACMD41_ARG_HC 0x4000
 #define CMD58 58
 #define CMD16 16
+#define CMD17 17
 
 #define STATUS_NULL 0x0
 #define STATUS_IDLE 0x1
@@ -25,6 +26,8 @@
 
 #define SD_RESP_TIMEOUT 8
 #define SD_INIT_TIMEOUT 100
+
+#define SD_READ_TOKEN 0xFE
 
 #define OCR_1_3V3 0x10
 #define OCR_0_HC 0x80
@@ -76,7 +79,7 @@ void sd_hc_init() {
     }
 
     sd_command(CMD58, 0, 0, 0, rb, 5);
-    if(rb[0] != STATUS_NULL )
+    if(rb[0] != STATUS_NULL)
         panic("driver/sd: illegal response to cmd58");
     if(!(rb[2] & OCR_1_3V3))
         panic("driver/sd: volatage range not supported");
@@ -88,6 +91,31 @@ void sd_hc_init() {
     if(r != STATUS_NULL)
         panic("driver/sd: illegal response to cmd16");
 }
+
+void sd_read_block(uint8_t* buff, uint16_t addr) {
+    uint8_t r;
+
+    sd_command(CMD17, 0, addr, 0, &r, 1);
+    if(r != STATUS_NULL) {
+       kprintf("REF: %d", r);
+       panic("driver/sd: invalid response to read");
+    }
+
+    r = spi_receive();
+    while(r != SD_READ_TOKEN) { // blocking polling. Maybe worth setting IRQ for non-blocking IO in future?
+        r = spi_receive();
+        if(r != 0xFF && r != SD_READ_TOKEN)
+            panic("driver/sd: data before read token"); // if that is true sd_command might consumed token
+    }
+
+    for(int i=0; i<SECTOR_SIZE; i++) {
+        *(buff++) = spi_receive();
+    }
+
+    // not using CRC, only cosuming bits
+    spi_receive(); spi_receive();
+
+    spi_transmit(0xFF);
 }
 
 void sd_init() {
