@@ -1,19 +1,21 @@
 #include "tar.h"
 #include <libk/kprintf.h>
 #include <libk/string.h>
+#include <driver/sd.h>
 #include <panic.h>
 
-#define SECTOR_SIZE 0x200
-#define TEMP_TAR_BEGIN 0xb000
+#define SECTOR_SIZE 512
 #define MAX_FILES 16
 
 struct fd_t {
-    struct tar_t* header;
+    unsigned int sector;
     unsigned int seek;
 };
 
 struct fd_t files[MAX_FILES];
 uint16_t in_use;
+
+char sector_buff[SECTOR_SIZE];
 
 int convert_octal(char* octal)  {
     int res = 0;
@@ -25,33 +27,35 @@ int convert_octal(char* octal)  {
     return res;
 }
 
-void* search_file(char* name) {
-    int empty_sectors = 0;
-    struct tar_t* header = (struct tar_t*) TEMP_TAR_BEGIN; 
+int search_file(char* name) {
+    int empty_sectors = 0, sector = 0;
+    struct tar_t* header = (struct tar_t*) sector_buff;
 
     while (empty_sectors < 2) {
+        sd_read_block(sector_buff, sector);
+
         if(header->name[0] == '\0') {
-           empty_sectors++;
-           header = (void*) header + SECTOR_SIZE;
-           continue;
+            empty_sectors++;
+            sector++;
+            continue;
         }
-       
+
         if(strncmp((char*)header->ustarzz, "ustar", 5))
             panic("tarFS: invalid header");
 
         if(strcmp(header->name, name) == 0) //TODO: long file names (name_prefix)
-            return header;
+            return sector;
         
         int sectors_skip = (convert_octal(header->size)+SECTOR_SIZE-1)/SECTOR_SIZE + 1;
-        header = (void*) header + SECTOR_SIZE*sectors_skip;
+        sector += sectors_skip;
     }
-    return NULL;
+    return -1;
 }
 
 int8_t open(char* path) {
-    struct tar_t* file_header = search_file(path);
+    int sector = search_file(path);
     
-    if(file_header == NULL)
+    if(sector == -1)
         return -ENOTFOUND;
     
     int fd = -1;
@@ -59,7 +63,7 @@ int8_t open(char* path) {
         if(!(in_use & (1<<i))) {
             in_use |= (1<<i);
             fd = i;
-            files[i].header = file_header;
+            files[i].sector = sector;
             files[i].seek = 0;
             break;
         }
@@ -81,18 +85,29 @@ int8_t close(uint8_t fd) {
 size_t read(int8_t fd, void* buff, size_t size) {
     if(fd >= MAX_FILES || !(in_use & (1<<fd)))
         return -EINVALIDFD;
+
+    sd_read_block(sector_buff, files[fd].sector);
+
+    struct tar_t* header = sector_buff;
     
-    size_t file_size = convert_octal(files[fd].header->size);
+    size_t file_size = convert_octal(header->size);
     if(files[fd].seek >= file_size)
         return 0;
 
     if(files[fd].seek+size > file_size)
         size = file_size - files[fd].seek;
-
-    char* data = (char*) files[fd].header + SECTOR_SIZE + files[fd].seek;
+    
+    int pos = files[fd].seek % SECTOR_SIZE;
+    int sector = files[fd].sector + (files[fd].seek / SECTOR_SIZE) + 1;
+    char* data = sector_buff + pos;
+    sd_read_block(sector_buff, sector);
 
     char* buffc = (char*) buff;
     for(size_t i=0; i<size; i++) {
+        if(pos++ == 512) {
+            sd_read_block(sector_buff, ++sector);
+            pos = 0;
+        }
         *buffc++ = *data++;
     }
     
@@ -110,12 +125,12 @@ size_t seek(int8_t fd, size_t seek) {
 }
 
 void tar_test() {
-    int fd_1 = open("boot.s");
+    int fd_1 = open("./boot.s");
     kprintf("fd: %d", fd_1);
-    int fd_2 = open("panic.c");
+    int fd_2 = open("./panic.c");
     kprintf("\nfd_p: %d", fd_2);
     close(fd_1);
-    int fd_3 = open("boot.s");
+    int fd_3 = open("./boot.s");
     kprintf("\nfd3: %d", fd_3);
     kprintf("Reading boot.s:\n");
     char buff[256];
