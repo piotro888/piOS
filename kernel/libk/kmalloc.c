@@ -1,7 +1,7 @@
 #include "kmalloc.h"
 #include <panic.h>
 
-#define KERNEL_HEAP_START 0x7000
+#define KERNEL_HEAP_START 0xA000
 #define KERNEL_HEAP_END 0xFFFF
 #define CHUNK_SIZE 16
 #define KERNEL_HEAP_SIZE (KERNEL_HEAP_END-KERNEL_HEAP_START)
