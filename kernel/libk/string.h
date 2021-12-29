@@ -6,6 +6,14 @@
 size_t strcmp(char* str1, char* str2);
 size_t strncmp(char* str1, char* str2, size_t len);
 
+size_t strlen(char* str);
+
+void strcpy(char* dst, char* src);
+void strncpy(char* dst, char* src, size_t len);
+
+void strcpynt(char* dst, char* src, size_t len);
+void strprefcpy(char* dst, char* src, size_t len);
+
 /*
 TODO:
 void memcpy();
