@@ -4,22 +4,25 @@ ASMCONV := python3 ~/pcpu/toolchain/asmconv.py
 SEND := python3 ../tools/send.py
 PEMU := ~/pcpu/toolchain/pcpuemu
 
-CFLAGS := -S -Wall -Wextra -pedantic -I.
+CFLAGS := -S -Wall -Wextra -pedantic -I. -O1
 
 AOBJS=\
 	boot.ao\
 	kstart.ao\
+	panic.ao\
+	driver/freq.ao\
+	driver/keyboard.ao\
+	driver/sd.ao\
+	driver/spi.ao\
+	driver/tty.ao\
+	fs/dirtree.ao\
+	fs/tar.ao\
 	irq/interrupt.ao\
 	irq/irq.ao\
-	libk/kprintf.ao\
-	libk/string.ao\
-	driver/keyboard.ao\
-	driver/spi.ao\
-	driver/sd.ao\
-	panic.ao\
 	libk/kmalloc.ao\
-	fs/tar.ao\
-	driver/tty.ao
+	libk/kprintf.ao\
+	libk/list.ao\
+	libk/string.ao
 
 .PHONY: all clean
 
