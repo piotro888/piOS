@@ -30,7 +30,7 @@ void dir_tree_add_path(struct dir_t_node* root, struct file_t* file) {
 
     int dir_depth = 0, path_index = 0;
     struct dir_t_node* node = root;
-    while((path_index = get_slash_pos(path, ++dir_depth)) > 0) {
+    while((path_index = get_slash_pos(path, dir_depth++)) > 0) {
         int found = 0;
         list_foreach(&node->subdirs) {
             struct dir_t_node* val = LIST_FOREACH_VAL(struct dir_t_node*);
@@ -79,4 +79,31 @@ void dir_tree_printf(struct dir_t_node* node, int depth) {
         struct dir_t_node* val = LIST_FOREACH_VAL(struct dir_t_node*);
         dir_tree_printf(val, depth);
     }
+}
+
+struct file_t* dir_tree_get_file(struct dir_t_node* node, char* path) {
+    int dir_depth = 0, path_index = 0;
+    while((path_index = get_slash_pos(path, dir_depth++)) > 0) {
+        int found = 0;
+        list_foreach(&node->subdirs) {
+            struct dir_t_node* val = LIST_FOREACH_VAL(struct dir_t_node*);
+            kprintf("find_iter: %s %s %d", val->name, path, path_index);
+            if(!strncmp(val->name, path, path_index+1)) {
+                node = val;
+                found = 1;
+                break;
+            }
+        }
+        
+        if(!found)
+            return NULL;
+    }
+
+    list_foreach(&node->files) {
+        struct file_t* file = LIST_FOREACH_VAL(struct file_t*);
+        if(!strcmp(file->name, path)) 
+            return file;
+    }
+
+    return NULL;
 }

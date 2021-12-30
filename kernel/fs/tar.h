@@ -23,6 +23,17 @@ struct tar_t {
     uint8_t name_prefix[155];
 };
 
+#define FS_TYPE_FILE 0
+#define FS_TYPE_DIR 1
+
+struct file_t {
+    char name[100];
+    size_t size;
+    int8_t type;
+    
+    size_t sector;
+};
+
 #define ENOTFOUND 5
 #define ETOOMANYFILES 6
 #define EINVALIDFD 7

@@ -1,6 +1,7 @@
 #include "tar.h"
 #include <libk/kprintf.h>
 #include <libk/string.h>
+#include <fs/dirtree.h>
 #include <driver/sd.h>
 #include <panic.h>
 
@@ -17,6 +18,8 @@ uint16_t in_use;
 
 char sector_buff[SECTOR_SIZE];
 
+struct dir_t_node tar_dir_tree;
+
 int convert_octal(char* octal)  {
     int res = 0;
     for(int i = 0; i < 11; i++) {
@@ -27,36 +30,13 @@ int convert_octal(char* octal)  {
     return res;
 }
 
-int search_file(char* name) {
-    int empty_sectors = 0, sector = 0;
-    struct tar_t* header = (struct tar_t*) sector_buff;
-
-    while (empty_sectors < 2) {
-        sd_read_block(sector_buff, sector);
-
-        if(header->name[0] == '\0') {
-            empty_sectors++;
-            sector++;
-            continue;
-        }
-
-        if(strncmp((char*)header->ustarzz, "ustar", 5))
-            panic("tarFS: invalid header");
-
-        if(strcmp(header->name, name) == 0) //TODO: long file names (name_prefix)
-            return sector;
-        
-        int sectors_skip = (convert_octal(header->size)+SECTOR_SIZE-1)/SECTOR_SIZE + 1;
-        sector += sectors_skip;
-    }
-    return -1;
-}
-
 int8_t open(char* path) {
-    int sector = search_file(path);
+    struct file_t* file = dir_tree_get_file(&tar_dir_tree, path);
     
-    if(sector == -1)
+    if(file == NULL)
         return -ENOTFOUND;
+
+    int sector = file->sector;
     
     int fd = -1;
     for(int i=0; i<MAX_FILES; i++) {
@@ -124,19 +104,53 @@ size_t seek(int8_t fd, size_t seek) {
     return seek;
 }
 
+void tar_make_dir_tree() {
+    int empty_sectors = 0, sector = 0;
+    struct tar_t* header = (struct tar_t*) sector_buff;
+    dir_tree_init(&tar_dir_tree);
+    int cnt = 30;
+    while (empty_sectors < 2) {
+        sd_read_block(sector_buff, sector);
+
+        if(header->name[0] == '\0') {
+            empty_sectors++;
+            sector++;
+            continue;
+        }
+
+        if(strncmp((char*)header->ustarzz, "ustar", 5)) {
+            kprintf("tarFS: invalid header at sector %d", sector);
+            panic("tarFS: invalid header");
+        };
+        
+        size_t size = convert_octal(header->size);
+        struct file_t* file = kmalloc(sizeof(struct file_t));
+        strcpy(file->name, header->name);
+        file->size = size;
+        file->type = FS_TYPE_FILE; // FIXME
+        file->sector = sector;
+        
+        dir_tree_add_path(&tar_dir_tree, file);
+        
+        int sectors_skip = (size+SECTOR_SIZE-1)/SECTOR_SIZE + 1;
+        sector += sectors_skip;
+    }
+    dir_tree_printf(&tar_dir_tree, 0);
+}
+
 void tar_test() {
-    int fd_1 = open("./boot.s");
+    int fd_1 = open("kernel/boot.s");
     kprintf("fd: %d", fd_1);
-    int fd_2 = open("./panic.c");
+    int fd_2 = open("kernel/panic.c");
     kprintf("\nfd_p: %d", fd_2);
     close(fd_1);
-    int fd_3 = open("./boot.s");
+    int fd_3 = open("nf");
     kprintf("\nfd3: %d", fd_3);
-    kprintf("Reading boot.s:\n");
+    kprintf("Reading file3:\n");
     char buff[256];
     int rs = read(fd_3, buff, 128);
     kprintf("Read %d chars: %s", rs, buff);
     rs = read(fd_3, buff, 10);
     buff[11] = '\0';
-    kprintf("\nand 10 more...\n %s", buff);
+    kprintf("\nand 10 more (%d)...\n %s", rs, buff);
 }

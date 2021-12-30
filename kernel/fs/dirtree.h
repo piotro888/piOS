@@ -21,6 +21,8 @@ void dir_tree_init(struct dir_t_node* root);
 
 void dir_tree_add_path(struct dir_t_node* root, struct file_t* file);
 
+struct file_t* dir_tree_get_file(struct dir_t_node* node, char* path);
+
 void dir_tree_printf(struct dir_t_node* node, int depth);
 
 #endif
