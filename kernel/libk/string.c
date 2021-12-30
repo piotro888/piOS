@@ -69,7 +69,7 @@ void strncpynt(char* dst, char* src, size_t len) {
 // Copy n char prefix from src, and put it allways null terminated to dst
 // Copies one byte more than len
 void strprefcpy(char* dst, char* src, size_t len) {
-    while(*dst && len--) {
+    while(*src && len--) {
         *(dst++) = *(src++);
     }
     *dst = '\0'; // always null terminate, but uses extra byte
