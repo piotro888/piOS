@@ -3,8 +3,9 @@ ASM := python3 ~/pcpu/toolchain/pas.py
 ASMCONV := python3 ~/pcpu/toolchain/asmconv.py
 SEND := python3 ../tools/send.py
 PEMU := ~/pcpu/toolchain/pcpuemu
+PCE := ~/pcpuemu/pce
 
-CFLAGS := -S -Wall -Wextra -pedantic -I. -O1
+CFLAGS := -S -Wall -Wextra -pedantic -I. 
 
 AOBJS=\
 	boot.ao\
@@ -33,7 +34,7 @@ upload: kernel.pbl
 
 kernel.pbl: $(AOBJS)
 	cd build && cat $(AOBJS) > kernel.ao 
-	$(ASM) -b build/kernel.ao -o build/kernel.pbl
+	$(ASM) -b build/kernel.ao -o build/kernel.pbl -m
 
 kernel.hex: $(AOBJS)
 	cd build && cat $(AOBJS) > kernel.ao 
@@ -53,3 +54,6 @@ clean:
 
 emu: kernel.hex kernel.pbl
 	$(PEMU) build/kernel.hex build/kernel.pbl
+
+pce: kernel.pbl
+	$(PCE) build/kernel.pbl build/kernel.pbl.mm ../test.tar
