@@ -1,9 +1,9 @@
 CC := ~/opt/gcc-pcpu/bin/pcpu-unknown-elf-gcc 
-ASM := python3 ~/pcpu/toolchain/pas.py
-ASMCONV := python3 ~/pcpu/toolchain/asmconv.py
+ASM := python3 ~/opt/pcpu-tools/pas.py
+ASMCONV := python3 ~/opt/pcpu-tools/asmconv.py
 SEND := python3 ../tools/send.py
 PEMU := ~/pcpu/toolchain/pcpuemu
-PCE := ~/pcpuemu/pce
+PCE := ~/opt/pcpu-tools/pce
 
 CFLAGS := -S -Wall -Wextra -pedantic -I. 
 
