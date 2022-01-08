@@ -23,7 +23,9 @@ AOBJS=\
 	libk/kmalloc.ao\
 	libk/kprintf.ao\
 	libk/list.ao\
-	libk/string.ao
+	libk/string.ao\
+	proc/cswitch.ao\
+	proc/virtual.ao
 
 .PHONY: all clean
 
