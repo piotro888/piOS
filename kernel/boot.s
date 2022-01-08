@@ -4,6 +4,8 @@
 
 ; begin of piOS ^^
 
+zero:
+
 jmp _startpoint ; reset vector
 
 jmp interrupt_handler ; interrupt vector (0x1) -> irq/irq.s
