@@ -1,19 +1,19 @@
 #include "virtual.h"
 
-extern void set_ram_mem(int page, int* data);
+extern void set_ram_mem(int* data, int page);
 void load_into_userspace(int page, int* data) {
-    set_ram_mem(page, data);
-    asm volatile ("":::"r0","r1","r3","r4");
+    set_ram_mem(data, page);
+    asm volatile ("":::"r0","r1","r2","r3","r4");
 }
 
-extern void set_program_mem(int page, int* data);
+extern void set_program_mem(int* data, int page);
 void load_into_userspace_program(int page, int* data) {
-    set_program_mem(page*2, data);
-    asm volatile ("":::"r0","r1","r3","r4");
+    set_program_mem(data, page*2);
+     asm volatile ("":::"r0","r1","r2","r3","r4");
 }
 
 __attribute__((noreturn)) extern void c_switch();
-__attribute__((noreturn)) void switch_to_userspace() {
+void switch_to_userspace() {
     // TODO: set ram & rom pages from proc struct
     asm volatile ( // temporary map program mem page 0 to 16
         "ldi r0, 16\n"
