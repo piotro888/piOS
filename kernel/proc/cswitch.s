@@ -122,7 +122,29 @@ set_mapping_from_struct:
     
     srs r6, 0 ; return 
 
+; @param r0 ptr to registeres
 c_switch:
+    ; load arithmetic flags
+    ldo r1, r0, 18
+    srs r1, 4
+
+    ; store pc to iret scratch register
+    ldo r1, r0, 16
+    srs r1, 3 
+
+    ; save r0 to scratch reg for later recovery (where normal memory cannot be accessed)
+    ldo r1, r0, 0
+    srs r1, 6
+
+    ; registers must be recovered from memory before mem paging is enabled
+    ldo r1, r0, 2
+    ldo r2, r0, 4
+    ldo r3, r0, 6
+    ldo r4, r0, 8
+    ldo r5, r0, 10
+    ldo r6, r0, 12
+    ldo r7, r0, 14
+
     srl r0, 1
     ori r0, r0, 0x4 ; enable mem paging
     srs r0, 1
@@ -130,9 +152,8 @@ c_switch:
     ldi r0, 0b10
     srs r0, 2 ; set jtr rom paging
 
-    ; TODO: set registers
+    srl r0, 6 ; recover r1 saved before paging enable
 
-    jmp zero
-
+    irt ; jump to pc stored in sr3
 
 .ramd
