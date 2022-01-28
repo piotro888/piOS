@@ -5,7 +5,7 @@ SEND := python3 ../tools/send.py
 PEMU := ~/pcpu/toolchain/pcpuemu
 PCE := ~/opt/pcpu-tools/pce
 
-CFLAGS := -S -Wall -Wextra -pedantic -I. 
+CFLAGS := -S -Wall -Wextra -pedantic -I.
 
 AOBJS=\
 	boot.ao\
@@ -20,6 +20,7 @@ AOBJS=\
 	fs/tar.ao\
 	irq/interrupt.ao\
 	irq/irq.ao\
+	libk/assert.ao\
 	libk/kmalloc.ao\
 	libk/kprintf.ao\
 	libk/list.ao\
