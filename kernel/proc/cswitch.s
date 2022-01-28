@@ -52,6 +52,76 @@ set_ram_mem:
 
     srs r6, 0 ; return
 
+; set virtual page mapping to values in struct
+; @param r0 pointer to mem_pages*16 + prog_pages*16
+set_mapping_from_struct:
+    ldo r1, r0, 0
+    srs r1, 10
+    ldo r1, r0, 2
+    srs r1, 11
+    ldo r1, r0, 4
+    srs r1, 12
+    ldo r1, r0, 6
+    srs r1, 13
+    ldo r1, r0, 8
+    srs r1, 14
+    ldo r1, r0, 10
+    srs r1, 15
+    ldo r1, r0, 12
+    srs r1, 16
+    ldo r1, r0, 14
+    srs r1, 17
+    ldo r1, r0, 16
+    srs r1, 18
+    ldo r1, r0, 18
+    srs r1, 19
+    ldo r1, r0, 20
+    srs r1, 0x1A
+    ldo r1, r0, 22
+    srs r1, 0x1B
+    ldo r1, r0, 24
+    srs r1, 0x1C
+    ldo r1, r0, 26
+    srs r1, 0x1D
+    ldo r1, r0, 28
+    srs r1, 0x1E
+    ldo r1, r0, 30
+    srs r1, 0x1F
+    ldo r1, r0, 32
+    srs r1, 0x20
+    ldo r1, r0, 34
+    srs r1, 0x21
+    ldo r1, r0, 36
+    srs r1, 0x22
+    ldo r1, r0, 38
+    srs r1, 0x23
+    ldo r1, r0, 40
+    srs r1, 0x24
+    ldo r1, r0, 42
+    srs r1, 0x25
+    ldo r1, r0, 44
+    srs r1, 0x26
+    ldo r1, r0, 46
+    srs r1, 0x27
+    ldo r1, r0, 48
+    srs r1, 0x28
+    ldo r1, r0, 50
+    srs r1, 0x29
+    ldo r1, r0, 52
+    srs r1, 0x2A
+    ldo r1, r0, 54
+    srs r1, 0x2B
+    ldo r1, r0, 56
+    srs r1, 0x2C
+    ldo r1, r0, 58
+    srs r1, 0x2D
+    ldo r1, r0, 60
+    srs r1, 0x2E
+    ldo r1, r0, 62
+    srs r1, 0x2F
+    
+    srs r6, 0 ; return 
+
 c_switch:
     srl r0, 1
     ori r0, r0, 0x4 ; enable mem paging
