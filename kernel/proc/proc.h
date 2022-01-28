@@ -16,9 +16,10 @@ struct proc {
     int prog_pages[16];
 };
 
-#define PROC_STATE_NULL 0
+#define PROC_STATE_UNLOADED 0
 #define PROC_STATE_LOADED 1
 
+// init process skips virtual memory (spins in kernel loop and handles interrutps, not selected by scheduler)
 #define PROC_TYPE_INIT 0
 #define PROC_TYPE_USER 1
 #define PROC_TYPE_KERNEL 2

@@ -26,6 +26,7 @@ AOBJS=\
 	libk/list.ao\
 	libk/string.ao\
 	proc/cswitch.ao\
+	proc/sched.ao\
 	proc/virtual.ao
 
 .PHONY: all clean
