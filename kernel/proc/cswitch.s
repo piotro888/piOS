@@ -146,7 +146,7 @@ c_switch:
     ldo r7, r0, 14
 
     srl r0, 1
-    ori r0, r0, 0x4 ; enable mem paging
+    ori r0, r0, 0x8 ; enable mem paging
     srs r0, 1
 
     ldi r0, 0b10
