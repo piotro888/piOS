@@ -1,6 +1,7 @@
 #include <libk/kprintf.h>
 #include <driver/keyboard.h>
 #include <libk/assert.h>
+#include <libk/types.h>
 #include <proc/sched.h>
 #include <proc/proc.h>
 #include <proc/virtual.h>
@@ -50,4 +51,25 @@ void int_enable() {
         "srs r0, 1\n"
         ::: "r0"
     );
+}
+
+void int_disable() {
+    asm volatile (
+    "srl r0, 1\n"
+    "ani r0, r0, 0xfb\n"
+    "srs r0, 1\n"
+    ::: "r0"
+    );
+}
+
+int int_get() {
+    u16 sr;
+    asm volatile (
+    "srl %0, 1\n"
+    "ori %0, %0, 0x4\n"
+    "srs %0, 1\n"
+    : "=r" (sr)
+    );
+
+    return (sr & 0x4) > 0;
 }

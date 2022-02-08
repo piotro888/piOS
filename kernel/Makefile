@@ -21,6 +21,7 @@ AOBJS=\
 	irq/interrupt.ao\
 	irq/irq.ao\
 	libk/assert.ao\
+	libk/atomic.ao\
 	libk/kmalloc.ao\
 	libk/kprintf.ao\
 	libk/list.ao\
