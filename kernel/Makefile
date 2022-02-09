@@ -25,6 +25,7 @@ AOBJS=\
 	libk/kmalloc.ao\
 	libk/kprintf.ao\
 	libk/list.ao\
+	libk/log.ao\
 	libk/string.ao\
 	proc/cswitch.ao\
 	proc/sched.ao\
