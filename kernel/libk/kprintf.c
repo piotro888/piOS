@@ -1,11 +1,12 @@
 #include "kprintf.h"
+
 #include <driver/tty.h>
+#include <libk/string.h>
 
-/* stdarg from gcc library */
-#include <stdarg.h>
+#define PRINTF_TTY_BUFFER_SIZE 512
 
-void print_number(unsigned int num, unsigned int base) {
-    char buff[20];
+/* print unsigned int to ascii buffer */
+int utoa(char* buff, unsigned int num, unsigned int base) {
     int pos = 0;
 
     if(!num)
@@ -24,20 +25,17 @@ void print_number(unsigned int num, unsigned int base) {
         buff[i] = buff[pos-i-1];
         buff[pos-i-1] = swp;
     }
+
     buff[pos] = '\0';
-    tty_puts(buff);
+    return pos;
 }
 
-/* basic printf */
-int kprintf(const char* str, ...) {
-    va_list vlist;
-    va_start(vlist, str);
-    int len = 0;
+int vsprintf(char* buff, const char* str, va_list vlist) {
+    char* initial_buff = buff;
 
     while(*str) {
         if(*str == '%') {
             str++;
-            
             switch (*str) {
                 case 'd':
                 case 'i':
@@ -45,42 +43,62 @@ int kprintf(const char* str, ...) {
                     int i_param = va_arg(vlist, int);
 
                     if(i_param < 0) {
-                        tty_putc('-');
+                        *buff++ = '-';
                         i_param *= -1;
                     }
-                    
-                    print_number((unsigned int) i_param, 10);
+
+                    buff += utoa(buff, (unsigned int) i_param, 10);
                     break;
                 case 'u':
                     str++;
                     i_param = va_arg(vlist, int);
-                    print_number(i_param, 10);
+                    buff += utoa(buff, (unsigned int) i_param, 10);
                     break;
                 case 'x':
                     str++;
-                    int x_param = va_arg(vlist, int);
-                    print_number(x_param, 16);
+                    i_param = va_arg(vlist, int);
+                    buff += utoa(buff, (unsigned int) i_param, 16);
                     break;
                 case 's':
                     str++;
                     char* s_param = va_arg(vlist, char*);
-                    tty_puts(s_param);
+                    strcpy(buff, s_param);
+                    buff += strlen(s_param);
                     break;
                 case 'c':
                     str++;
                     char c_param = (char)va_arg(vlist, int);
-                    tty_putc(c_param);
+                    *buff++ = c_param;
                     break;
                 default:
-                    tty_putc('e');
+                    *buff++ = 'E';
                     break;
             }
         } else {
-            tty_putc(*str);
-            str++;
+            *buff++ = *str++;
         }
     }
- 
-    va_end(vlist);
-    return len;
+    *buff = '\0';
+    return buff-initial_buff;
+}
+
+int sprintf(char* buff, const char* fmt, ...) {
+    va_list list;
+    va_start(list, fmt);
+    int res = vsprintf(buff, fmt, list);
+    va_end(list);
+    return res;
+}
+
+int kprintf(const char* str, ...) {
+    va_list list;
+    va_start(list, str);
+
+    char buff[PRINTF_TTY_BUFFER_SIZE];
+    int res = vsprintf(buff, str, list);
+
+    va_end(list);
+    tty_puts(buff);
+
+    return  res;
 }
