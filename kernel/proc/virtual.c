@@ -1,5 +1,7 @@
 #include "virtual.h"
 
+#include <libk//log.h>
+
 extern void set_ram_mem(int* data, int page);
 void load_into_userspace(int page, int* data) {
     set_ram_mem(data, page);
@@ -15,7 +17,6 @@ void load_into_userspace_program(int page, int* data) {
 extern void set_mapping_from_struct(int* pages);
 __attribute__((noreturn)) extern void c_switch(int* regs);
 void switch_to_userspace(struct proc* p) {
-    p->prog_pages[0] = 16; // temporary map program mem page 0 to 16
     set_mapping_from_struct(p->mem_pages);
     asm volatile ("":::"r1"); // clobber r1
 

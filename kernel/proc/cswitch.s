@@ -56,25 +56,25 @@ set_ram_mem:
 ; @param r0 pointer to mem_pages*16 + prog_pages*16
 set_mapping_from_struct:
     ldo r1, r0, 0
-    srs r1, 10
+    srs r1, 0x10
     ldo r1, r0, 2
-    srs r1, 11
+    srs r1, 0x11
     ldo r1, r0, 4
-    srs r1, 12
+    srs r1, 0x12
     ldo r1, r0, 6
-    srs r1, 13
+    srs r1, 0x13
     ldo r1, r0, 8
-    srs r1, 14
+    srs r1, 0x14
     ldo r1, r0, 10
-    srs r1, 15
+    srs r1, 0x15
     ldo r1, r0, 12
-    srs r1, 16
+    srs r1, 0x16
     ldo r1, r0, 14
-    srs r1, 17
+    srs r1, 0x17
     ldo r1, r0, 16
-    srs r1, 18
+    srs r1, 0x18
     ldo r1, r0, 18
-    srs r1, 19
+    srs r1, 0x19
     ldo r1, r0, 20
     srs r1, 0x1A
     ldo r1, r0, 22
