@@ -14,6 +14,9 @@ struct proc {
     // paging
     int mem_pages[16];
     int prog_pages[16];
+
+    // short proc name
+    char name[16];
 };
 
 #define PROC_STATE_UNLOADED 0

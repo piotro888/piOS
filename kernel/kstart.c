@@ -7,12 +7,35 @@
 #include <irq/interrupt.h>
 #include <libk/kmalloc.h>
 #include <libk/kprintf.h>
+#include <libk/log.h>
+#include <libk/assert.h>
 #include <fs/tar.h>
 #include <driver/sd.h>
 #include <art.h>
 #include <proc/virtual.h>
-#include <proc/proc.h>
 #include <proc/sched.h>
+
+__attribute__((noreturn)) void test_kthread() {
+    tty_putc('x');
+    for(;;) {
+        int_disable();
+        log("from thread");
+        int_enable();
+     //   asm volatile ("sys");
+        for(int i=0; i<30000; i++){}
+    }
+}
+
+__attribute__((noreturn)) void test_kthread2() {
+    tty_putc('x');
+    for(;;) {
+        int_disable();
+        log("thread2");
+        int_enable();
+        //   asm volatile ("sys");
+        for(int i=0; i<30000; i++){}
+    }
+}
 
 /* C entry point for kernel */
 void _kstart() {
@@ -26,47 +49,20 @@ void _kstart() {
     init_malloc();
     // kprintf("initializing devices\n");
     // sd_init();
+    kprintf("initializing scheduler\n");
+    scheduler_init();
     kprintf("enabling interrupts\n");
     int_enable();
     kprintf("init done.\n");
-    kprintf("Happy new year!\n");
     kprintf(BOOT_ART);
     //tar_make_dir_tree();
 
-    kprintf("loading program\n");
-    int program_buff[10];
-    program_buff[0] = 0x4;
-    program_buff[1] = 0x5;
-    //program_buff[2] = 0xe;
-    //program_buff[3] = 0x1; // looping at addr 1 previously broke irq
-    program_buff[2] = 0x0;
-    program_buff[3] = 0x0; // looping at addr 1 previously broke irq
-    //program_buff[2] = 0x12; // interrupt!
-    //program_buff[3] = 0x0;
-    program_buff[4] = 0x12; // interrupt!
-    program_buff[5] = 0x0;
-    //program_buff[4] = 0x0;
-    //program_buff[5] = 0x0;
-    program_buff[6] = 0x4; 
-    program_buff[7] = 0x3; // load 3 to r0 to see if next insn is executed
-    program_buff[8] = 0xe;
-    program_buff[9] = 0x3;
-    load_into_userspace_program(16, program_buff);
-
-    kprintf("switching to userspace\n");
+    make_kernel_thread("tt", test_kthread);
+    make_kernel_thread("tt2", test_kthread2);
+    sched_pick_next();
     scheduling_enabled = 1;
-    current_proc.pid = 1;
-    current_proc.state = PROC_STATE_LOADED;
-    current_proc.pc = 0;
-    current_proc.regs[0] = 1;
-    current_proc.regs[1] = 11;
-    current_proc.regs[2] = 12;
-    current_proc.regs[3] = 13;
-    current_proc.regs[4] = 14;
-    current_proc.regs[5] = 15;
-    current_proc.regs[6] = 16;
-    current_proc.regs[7] = 17;
-    switch_to_userspace(&current_proc);
+    switch_to_userspace(current_proc);
+    ASSERT_NOT_REACHED();
 
     tty_set_color(0x09);
     kprintf("\nkernel halted.\n");

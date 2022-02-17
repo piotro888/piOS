@@ -15,7 +15,7 @@ unsigned int log_time = 0;
 void internal_log(char* msg, char* opt_fn_name, int opt_fn_line, int opt_err_level, ...) {
     char log_buff[LOG_BUFF_SIZE];
 
-    char* thread_name = current_proc.name;
+    char* thread_name = current_proc->name;
     if(!scheduling_enabled)
             thread_name = "kernel";
 
@@ -37,7 +37,7 @@ void internal_log(char* msg, char* opt_fn_name, int opt_fn_line, int opt_err_lev
     va_start(args, opt_err_level);
 
     char* log_ptr = log_buff;
-    log_ptr += sprintf(log_ptr, "%d.%d: %s[%s(%d)%s%s]: ", log_time/100, log_time%100, err_string, thread_name, current_proc.pid, opt_fn_name, line_buff);
+    log_ptr += sprintf(log_ptr, "%d.%d: %s[%s(%d)%s%s]: ", log_time/100, log_time%100, err_string, thread_name, current_proc->pid, opt_fn_name, line_buff);
     log_ptr += vsprintf(log_ptr, msg, args);
     strcpy(log_ptr, "\n");
 
