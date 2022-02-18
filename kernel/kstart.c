@@ -9,6 +9,7 @@
 #include <libk/kprintf.h>
 #include <libk/log.h>
 #include <libk/assert.h>
+#include <irq/timer.h>
 #include <fs/tar.h>
 #include <driver/sd.h>
 #include <art.h>
@@ -50,6 +51,7 @@ void _kstart() {
     // kprintf("initializing devices\n");
     // sd_init();
     kprintf("initializing scheduler\n");
+    timer_init();
     scheduler_init();
     kprintf("enabling interrupts\n");
     int_enable();

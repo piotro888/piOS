@@ -4,11 +4,10 @@
 #include <libk/kprintf.h>
 #include <libk/string.h>
 #include <proc/sched.h>
+#include <irq/timer.h>
 
 #define LOG_TARGET_VGA 0
 int LOG_TARGET = LOG_TARGET_VGA;
-
-unsigned int log_time = 0;
 
 #define LOG_BUFF_SIZE 512
 
@@ -37,7 +36,7 @@ void internal_log(char* msg, char* opt_fn_name, int opt_fn_line, int opt_err_lev
     va_start(args, opt_err_level);
 
     char* log_ptr = log_buff;
-    log_ptr += sprintf(log_ptr, "%d.%d: %s[%s(%d)%s%s]: ", log_time/100, log_time%100, err_string, thread_name, current_proc->pid, opt_fn_name, line_buff);
+    log_ptr += sprintf(log_ptr, "%d.%d: %s[%s(%d)%s%s]: ", sys_ticks/100, sys_ticks%100, err_string, thread_name, current_proc->pid, opt_fn_name, line_buff);
     log_ptr += vsprintf(log_ptr, msg, args);
     strcpy(log_ptr, "\n");
 

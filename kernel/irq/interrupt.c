@@ -1,3 +1,5 @@
+#include "interrupt.h"
+
 #include <libk/kprintf.h>
 #include <driver/keyboard.h>
 #include <libk/assert.h>
@@ -5,9 +7,7 @@
 #include <proc/sched.h>
 #include <proc/proc.h>
 #include <proc/virtual.h>
-
-#define IRQ_CLEAR(x)   (*(volatile u16*) 0x12) = (1<<(x))
-#define IRQ_PENDING(x) (*(volatile u16*) 0x10) & (1<<(x)) 
+#include <irq/timer.h>
 
 /* Interrupt handler called from irq.s */
 __attribute__((used))
@@ -20,10 +20,13 @@ void interrupt(const char* state) {
     current_proc->pc =          *(int*)(state+16-11);
     current_proc->arith_flags = *(int*)(state+16-12);
 
+    // Thread should be only switched on syscall and timer interrupts
+    int should_switch_thread = 0;
 
     // check for syscall flag in sr
     if((*(int*)(state+16-13)) & 0x8) {
         kprintf("SYSCALL ");
+        should_switch_thread = 1;
     }
 
     // interrupt request and syscall could happen at same time
@@ -34,10 +37,17 @@ void interrupt(const char* state) {
         print_scancode(scancode);
     }
 
+    if(IRQ_PENDING(TIMER_IRQ_ID)) {
+        IRQ_CLEAR(TIMER_IRQ_ID);
+        sys_ticks++;
+        should_switch_thread = 1;
+    }
+
     if(scheduling_enabled) {
-        // resume execution from current thread
+        if(should_switch_thread)
+            sched_pick_next();
+
         kprintf("[ie to thread %d]", current_proc->pid);
-        sched_pick_next();
         ASSERT(current_proc->state != PROC_STATE_UNLOADED);
         switch_to_userspace(current_proc);
     }
