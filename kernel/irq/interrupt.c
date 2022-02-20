@@ -82,8 +82,6 @@ int int_get() {
     u16 sr;
     asm volatile (
     "srl %0, 1\n"
-    "ori %0, %0, 0x4\n"
-    "srs %0, 1\n"
     : "=r" (sr)
     );
 
