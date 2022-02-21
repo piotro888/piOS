@@ -4,6 +4,7 @@
 #include <driver/keyboard.h>
 #include <libk/assert.h>
 #include <libk/types.h>
+#include <libk/log.h>
 #include <proc/sched.h>
 #include <proc/proc.h>
 #include <proc/virtual.h>
@@ -12,8 +13,6 @@
 /* Interrupt handler called from irq.s */
 __attribute__((used))
 void interrupt(const char* state) {
-    kprintf("[interrupted]\n");
-
     // save thread state
     for(int i=0; i<8; i++)
         current_proc->regs[i] = *(int*)(state+16-(3+i));
@@ -24,8 +23,16 @@ void interrupt(const char* state) {
     int should_switch_thread = 0;
 
     // check for syscall flag in sr
-    if((*(int*)(state+16-13)) & 0x8) {
-        kprintf("SYSCALL ");
+    int syscall_flag = (*(int*)(state+16-13)) & 0x8;
+
+    if(syscall_flag && (current_proc->type == PROC_TYPE_USER || current_proc->type == PROC_TYPE_PRIV)) {
+        log("syscall: %d", current_proc->regs[0]);
+        should_switch_thread = 1;
+    }
+
+    /* syscall from thread is always just YIELD */
+    if(syscall_flag && current_proc->type == PROC_TYPE_KERNEL) {
+        log("yield");
         should_switch_thread = 1;
     }
 
@@ -47,15 +54,14 @@ void interrupt(const char* state) {
         if(should_switch_thread)
             sched_pick_next();
 
-        kprintf("[ie to thread %d]", current_proc->pid);
         ASSERT(current_proc->state != PROC_STATE_UNLOADED);
         switch_to_userspace(current_proc);
+        ASSERT_NOT_REACHED();
     }
 
-    kprintf("[ie]  ");
-    /*  allow only returning here with virtual memory disabled
-        i.e. before scheduling (when kernel is booting before threads and initializing)
-    */ 
+    /* only allow returning here with virtual memory disabled
+     * i.e. before scheduling (when kernel is booting before threads)
+     */
     ASSERT(!scheduling_enabled);
 }
 

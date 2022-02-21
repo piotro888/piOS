@@ -13,4 +13,6 @@ void sched_pick_next();
 
 int make_kernel_thread(char* name, void (*entry)());
 
+#define YIELD() asm volatile ("sys")
+
 #endif

@@ -25,17 +25,37 @@ int first_free_page = 17;
 
 void scheduler_init() {
     list_init(&proc_list);
+    scheduling_enabled = 0;
 }
 
 /* Set current_proc to next process */
 void sched_pick_next() {
     ASSERT(proc_list.first != NULL);
 
-    // if reached end of list return to beginning
-    if(last_element == NULL || last_element->next == NULL)
-        last_element = proc_list.first;
-    else
-        last_element = last_element->next;
+    for(;;) {
+        // if reached end of list return to beginning
+        if (last_element == NULL || last_element->next == NULL)
+            last_element = proc_list.first;
+        else
+            last_element = last_element->next;
+
+        // check if valid to run
+        struct proc* lproc = (struct proc*)last_element->val;
+
+        // this process is valid to run
+        if(lproc->state == PROC_STATE_RUNNABLE)
+            break;
+
+        if(lproc->state == PROC_STATE_BLOCKED) {
+            // check if blocked process is unblocked now
+            if(lproc->sema_blocked->count > 0) {
+                lproc->state = PROC_STATE_RUNNABLE;
+                break;
+            }
+        }
+
+        // FIXME: Add kernel idle task, and schedule it if no process is runnable
+    }
 
     current_proc = ((struct proc*) last_element->val);
 }
@@ -67,7 +87,7 @@ int make_kernel_thread(char* name, void (*entry)()) {
     p->pc = (int)entry+1;
 
     // thread is ready to execute now
-    p->state = PROC_STATE_LOADED;
+    p->state = PROC_STATE_RUNNABLE;
 
     strcpy(p->name, name);
 
