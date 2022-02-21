@@ -20,6 +20,7 @@ AOBJS=\
 	fs/tar.ao\
 	irq/interrupt.ao\
 	irq/irq.ao\
+	irq/timer.ao\
 	libk/assert.ao\
 	libk/atomic.ao\
 	libk/kmalloc.ao\
@@ -27,6 +28,7 @@ AOBJS=\
 	libk/list.ao\
 	libk/log.ao\
 	libk/string.ao\
+	libk/con/semaphore.ao\
 	proc/cswitch.ao\
 	proc/sched.ao\
 	proc/virtual.ao
