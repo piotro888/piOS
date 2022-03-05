@@ -52,6 +52,14 @@ void strncpy(char* dst, char* src, size_t len) {
         *(dst++) = '\0';
 }
 
+char* strchr(char* str, char ch) {
+    do {
+        if(*str == ch)
+            return str;
+    } while (*str++);
+    return NULL;
+}
+
 // -- not std libc functions -- 
 
 // strncpy but always null terminate if reached end of n

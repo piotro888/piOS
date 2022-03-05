@@ -11,6 +11,8 @@ size_t strlen(char* str);
 void strcpy(char* dst, char* src);
 void strncpy(char* dst, char* src, size_t len);
 
+char* strchr(char* str, char ch);
+
 void strcpynt(char* dst, char* src, size_t len);
 void strprefcpy(char* dst, char* src, size_t len);
 
