@@ -18,6 +18,7 @@ AOBJS=\
 	driver/tty.ao\
 	fs/dirtree.ao\
 	fs/tar.ao\
+	fs/vfs.ao\
 	irq/interrupt.ao\
 	irq/irq.ao\
 	irq/timer.ao\

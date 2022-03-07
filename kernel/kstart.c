@@ -12,6 +12,7 @@
 #include <libk/con/semaphore.h>
 #include <irq/timer.h>
 #include <fs/tar.h>
+#include <fs/vfs.h>
 #include <driver/sd.h>
 #include <art.h>
 #include <proc/virtual.h>
@@ -68,6 +69,7 @@ struct semaphore cnt1_end;
 struct semaphore cnt2_end;
 
 __attribute__((noreturn)) void test_kthread3d0() {
+    log("start");
     for(int i=0; i<10000; i++) {
 //        atomic_add_int(&shactr, 1);
         semaphore_down(&sha_sem);
@@ -78,12 +80,13 @@ __attribute__((noreturn)) void test_kthread3d0() {
     log("shactr1 ended: %d", shactr);
     semaphore_up(&cnt1_end);
     semaphore_down(&cnt2_end);
-    log("2end");
+    log("1end");
 
     for(;;);
 }
 
 __attribute__((noreturn)) void test_kthread3d1() {
+    log("start");
     for(int i=0; i<10000; i++) {
         semaphore_down(&sha_sem);
         shactr++;
@@ -117,6 +120,15 @@ void _kstart() {
     kprintf("init done.\n");
     kprintf(BOOT_ART);
     //tar_make_dir_tree();
+
+    log("testing vfs");
+    vfs_init();
+    log("mount /dev/usb/");
+    struct vfs_reg* handles = kmalloc(sizeof(struct vfs_reg));
+    vfs_mount("/dev/usb/", handles);
+    log("open /dev/usb/x/a");
+    int r = vfs_open("/dev/usb/x/a");
+    log("r=%d", r);
 
     //make_kernel_thread("tt", test_kthread);
     //make_kernel_thread("tt2", test_kthread2);
