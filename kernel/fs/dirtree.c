@@ -1,4 +1,5 @@
 #include "dirtree.h"
+#include <libk/assert.h>
 #include <libk/list.h>
 #include <libk/string.h>
 #include <libk/kprintf.h>
@@ -28,13 +29,13 @@ void dir_tree_init(struct dir_t_node* root) {
 void dir_tree_add_path(struct dir_t_node* root, struct file_t* file) {
     char* path = file->name;
 
-    int dir_depth = 0, path_index = 0;
+    char* next_slash = path;
     struct dir_t_node* node = root;
-    while((path_index = get_slash_pos(path, dir_depth++)) > 0) {
+    while((next_slash = strchr(next_slash+1, '/')) != NULL) {
         int found = 0;
         list_foreach(&node->subdirs) {
             struct dir_t_node* val = LIST_FOREACH_VAL(struct dir_t_node*);
-            if(!strncmp(val->name, path, path_index+1)) {
+            if(!strncmp(val->name, path, (next_slash-path)+1)) {
                 node = val;
                 found = 1;
                 break;
@@ -45,7 +46,7 @@ void dir_tree_add_path(struct dir_t_node* root, struct file_t* file) {
 
         struct dir_t_node* new_node = kmalloc(sizeof(struct dir_t_node));
 
-        strprefcpy(new_node->name, path, path_index+1);
+        strprefcpy(new_node->name, path, (next_slash-path)+1);
 
         new_node->parent = node;
         list_init(&new_node->subdirs);
@@ -65,7 +66,7 @@ void dir_tree_add_path(struct dir_t_node* root, struct file_t* file) {
     list_append(&node->files, file);
 }
 
-#define INP for(int x=0; x<depth; x++) tty_putc(' ');
+#define INP for(int x=0; x<depth; x++) kprintf(" ");
 void dir_tree_printf(struct dir_t_node* node, int depth) {
 
     INP; kprintf("d: %s\n", node->name);
@@ -82,12 +83,15 @@ void dir_tree_printf(struct dir_t_node* node, int depth) {
 }
 
 struct file_t* dir_tree_get_file(struct dir_t_node* node, char* path) {
-    int dir_depth = 0, path_index = 0;
+    int dir_depth = 0, path_index;
+
+    ASSERT(*path == '/');
+    path++;
     while((path_index = get_slash_pos(path, dir_depth++)) > 0) {
         int found = 0;
         list_foreach(&node->subdirs) {
             struct dir_t_node* val = LIST_FOREACH_VAL(struct dir_t_node*);
-            kprintf("find_iter: %s %s %d", val->name, path, path_index);
+
             if(!strncmp(val->name, path, path_index+1)) {
                 node = val;
                 found = 1;
