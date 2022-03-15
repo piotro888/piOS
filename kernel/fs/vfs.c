@@ -7,16 +7,8 @@
 
 static int vfs_id = 0;
 
-struct vfs_node {
-    int vid;
-    char* name;
-    struct vfs_reg* handles;
-    struct vfs_node* parent;
-
-    struct list subdirs;
-
-    char* path_search; // FIXME: find better way to do this
-};
+#define VFS_MAX_FILES 16
+struct fd_info open_files[VFS_MAX_FILES]; // FIXME: Assign FDs to proc
 
 static struct vfs_node vfs_root;
 
@@ -25,29 +17,72 @@ void vfs_init() {
     vfs_root.parent = &vfs_root;
     strcpy(vfs_root.name, "/");
     vfs_root.handles = NULL;
+
+    for(int i=0; i<VFS_MAX_FILES; i++)
+        open_files[i].vnode = NULL;
 }
 
 struct vfs_node* vnode_tree_create(char* path);
 struct vfs_node* vnode_tree_find(char* path);
+int fd_get_free();
 
-int vfs_mount(char* path, struct vfs_reg* handles) {
+int vfs_mount(char* path, const struct vfs_reg* handles) {
     ASSERT(path[0] == '/');
 
     struct vfs_node* node = vnode_tree_create(path);
-    node->handles = handles;
+    node->handles = kmalloc(sizeof(struct vfs_reg));
+    // FIXME: change to memcpy (figure out int/char on this architecture)
+    node->handles->get_fid = handles->get_fid;
+    node->handles->read = handles->read;
+    node->handles->write = handles->write;
+
     node->vid = ++vfs_id;
 
     return 0;
 }
 
 int vfs_open(char* path) {
-    struct vfs_node* vnode = vnode_tree_find(path);
-    if(!vnode)
+    struct vfs_node *vnode = vnode_tree_find(path);
+    if (!vnode)
         return -ENOTFOUND;
 
     // call open on handle with suffix of path
-    int file_inode = (*vnode->handles->open)(vnode->path_search);
+    int file_fid = (*vnode->handles->get_fid)(vnode->path_search);
 
+    if (file_fid < 0) {
+        return file_fid; // pass errors
+    }
+
+    int fd = fd_get_free();
+    if(fd < 0)
+        return -ETOOMANYFILES;
+
+    open_files[fd].vnode = vnode;
+    open_files[fd].inode = file_fid;
+    open_files[fd].seek = 0;
+
+    return fd;
+}
+
+size_t vfs_read(int fd, void* buff, size_t len) {
+    if(open_files[fd].vnode == NULL)
+        return (EBADFD == 0);
+
+    return (*open_files[fd].vnode->handles->read)(&open_files[fd], buff, len);
+}
+
+size_t vfs_write(int fd, void* buff, size_t len) {
+    if(open_files[fd].vnode == NULL)
+        return (EBADFD == 0);
+
+    return (*open_files[fd].vnode->handles->write)(&open_files[fd], buff, len);
+}
+
+int fd_get_free() {
+    for(int i=0; i<VFS_MAX_FILES; i++) {
+        if(open_files[i].vnode == NULL)
+            return i;
+    }
     return -1;
 }
 
@@ -116,4 +151,3 @@ struct vfs_node* vnode_tree_create(char* path) {
     }
     return node;
 }
-

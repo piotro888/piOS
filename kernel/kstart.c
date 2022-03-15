@@ -102,6 +102,9 @@ __attribute__((noreturn)) void test_kthread3d1() {
     for(;;);
 }
 
+void nullfunc(){}
+
+char buffxz[128];
 /* C entry point for kernel */
 void _kstart() {
     init_tty();
@@ -112,27 +115,27 @@ void _kstart() {
     tty_putc('\n');
     kprintf("initializing kernel heap\n");
     init_malloc();
-    // kprintf("initializing devices\n");
-    // sd_init();
+    kprintf("initializing vfs\n");
+    vfs_init();
+    kprintf("initializing devices\n");
+    sd_init();
     kprintf("initializing scheduler\n");
     timer_init();
     scheduler_init();
     kprintf("init done.\n");
     kprintf(BOOT_ART);
-    //tar_make_dir_tree();
+    tar_make_dir_tree();
 
-    log("testing vfs");
-    vfs_init();
-    log("mount /dev/usb/");
-    struct vfs_reg* handles = kmalloc(sizeof(struct vfs_reg));
-    vfs_mount("/dev/usb/", handles);
-    log("open /dev/usb/x/a");
-    int r = vfs_open("/dev/usb/x/a");
-    log("r=%d", r);
+    log("mounting sd card");
+    tar_mount_sd();
+    log("reading vfs");
 
-    //make_kernel_thread("tt", test_kthread);
-    //make_kernel_thread("tt2", test_kthread2);
-    //make_kernel_thread("tt2", test_kthread3);
+    int fd = vfs_open("/sd/kernel/driver/sd.c");
+    log("open: %d", fd);
+    int size = vfs_read(fd, buffxz, 128);
+    log("read size = %d. \nf:", size);
+    for(int i=0; i<size; i++)
+        kprintf("%c", buffxz[i]);
 
     // SEMAPHORES!
     semaphore_init(&sha_sem);
