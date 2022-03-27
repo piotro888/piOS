@@ -30,15 +30,13 @@ struct vfs_reg {
     size_t (*write)(struct fd_info* file, void* buff, size_t len);
 };
 
-extern struct fd_info open_files[16];
-
 void vfs_init();
 
 int vfs_mount(char* path, const struct vfs_reg* handles);
 int vfs_unmount(char* path);
 
 int vfs_open(char* path);
-int vfs_close(int8_t fd);
+int vfs_close(int fd);
 
 size_t vfs_read (int fd, void* buff, size_t len);
 size_t vfs_write(int fd, void* buff, size_t len);

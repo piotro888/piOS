@@ -2,6 +2,9 @@
 #define PROC_PROC_H
 
 #include <libk/con/semaphore.h>
+#include <fs/vfs.h>
+
+#define PROC_MAX_FILES 16
 
 struct proc {
     int pid;
@@ -20,6 +23,8 @@ struct proc {
     // short proc name
     char name[16];
 
+    struct fd_info open_files[PROC_MAX_FILES];
+
     // blocking support
     struct semaphore* sema_blocked;
 };
@@ -28,7 +33,7 @@ struct proc {
 #define PROC_STATE_RUNNABLE 1
 #define PROC_STATE_BLOCKED 2
 
-// init process skips virtual memory (spins in kernel loop and handles interrutps, not selected by scheduler)
+// init process skips virtual memory (spins in kernel loop and handles interrupts, not selected by scheduler)
 #define PROC_TYPE_INIT 0
 #define PROC_TYPE_USER 1
 #define PROC_TYPE_KERNEL 2

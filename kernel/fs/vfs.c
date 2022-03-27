@@ -4,11 +4,10 @@
 #include <libk/list.h>
 #include <libk/kmalloc.h>
 #include <libk/string.h>
+#include <proc/proc.h>
+#include <proc/sched.h>
 
 static int vfs_id = 0;
-
-#define VFS_MAX_FILES 16
-struct fd_info open_files[VFS_MAX_FILES]; // FIXME: Assign FDs to proc
 
 static struct vfs_node vfs_root;
 
@@ -17,9 +16,6 @@ void vfs_init() {
     vfs_root.parent = &vfs_root;
     strcpy(vfs_root.name, "/");
     vfs_root.handles = NULL;
-
-    for(int i=0; i<VFS_MAX_FILES; i++)
-        open_files[i].vnode = NULL;
 }
 
 struct vfs_node* vnode_tree_create(char* path);
@@ -57,30 +53,40 @@ int vfs_open(char* path) {
     if(fd < 0)
         return -ETOOMANYFILES;
 
-    open_files[fd].vnode = vnode;
-    open_files[fd].inode = file_fid;
-    open_files[fd].seek = 0;
+    ASSERT(scheduling_enabled); // current proc set
+
+    current_proc->open_files[fd].vnode = vnode;
+    current_proc->open_files[fd].inode = file_fid;
+    current_proc->open_files[fd].seek = 0;
 
     return fd;
 }
 
+int vfs_close(int fd) {
+    if(fd < 0 || fd > PROC_MAX_FILES || current_proc->open_files[fd].vnode == NULL)
+        return -EBADFD;
+
+    current_proc->open_files[fd].vnode = NULL;
+    return 0;
+}
+
 size_t vfs_read(int fd, void* buff, size_t len) {
-    if(open_files[fd].vnode == NULL)
+    if(current_proc->open_files[fd].vnode == NULL)
         return (EBADFD == 0);
 
-    return (*open_files[fd].vnode->handles->read)(&open_files[fd], buff, len);
+    return (*current_proc->open_files[fd].vnode->handles->read)(&current_proc->open_files[fd], buff, len);
 }
 
 size_t vfs_write(int fd, void* buff, size_t len) {
-    if(open_files[fd].vnode == NULL)
+    if(current_proc->open_files[fd].vnode == NULL)
         return (EBADFD == 0);
 
-    return (*open_files[fd].vnode->handles->write)(&open_files[fd], buff, len);
+    return (*current_proc->open_files[fd].vnode->handles->write)(&current_proc->open_files[fd], buff, len);
 }
 
 int fd_get_free() {
-    for(int i=0; i<VFS_MAX_FILES; i++) {
-        if(open_files[i].vnode == NULL)
+    for(int i=0; i<PROC_MAX_FILES; i++) {
+        if(current_proc->open_files[i].vnode == NULL)
             return i;
     }
     return -1;
@@ -121,6 +127,7 @@ struct vfs_node* vnode_tree_find(char* path) {
 
 struct vfs_node* vnode_tree_create(char* path) {
     struct vfs_node* node = &vfs_root;
+    // FIXME: Support file nodes?
 
     char* dirname = ++path; // skip first slash (already matched in vfs_root)
     char* next_tok = path;
