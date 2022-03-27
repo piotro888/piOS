@@ -8,5 +8,6 @@
 int atomic_read_int(volatile int* var);
 void atomic_write_int(volatile int* var, int val);
 void atomic_add_int(volatile int* var, int val);
+int atomic_compare_and_swap_int(volatile int* var, int cmp, int swap);
 
 #endif
