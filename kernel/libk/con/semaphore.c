@@ -14,6 +14,11 @@ void semaphore_up(struct semaphore* s) {
     atomic_add_int(&s->count, 1);
 }
 
+void semaphore_binary_up(struct semaphore* s) {
+    ASSERT(s->count < 2);
+    atomic_compare_and_swap_int(&s->count, 0, 1);
+}
+
 void semaphore_down(struct semaphore* s) {
     int_disable();
 
@@ -25,7 +30,6 @@ void semaphore_down(struct semaphore* s) {
         current_proc->state = PROC_STATE_BLOCKED;
         current_proc->sema_blocked = s;
 
-        int itc = 0;
         do {
             // yield needs interrupts enabled
             int_enable();

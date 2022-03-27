@@ -8,5 +8,6 @@ struct semaphore {
 void semaphore_init(struct semaphore* s);
 void semaphore_up(struct semaphore* s);
 void semaphore_down(struct semaphore* s);
+void semaphore_binary_up(struct semaphore* s);
 
 #endif
