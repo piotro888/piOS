@@ -1,3 +1,4 @@
+#include "keyboard.h"
 #include <driver/tty.h>
 #include <fs/kbd.h>
 
@@ -49,8 +50,7 @@ void print_scancode (uint8_t scancode) {
             outc = shift_scancodes[scancode];
         else
             outc = printable_scancodes[scancode];
-        
-        tty_putc(outc);
+
         kbd_vfs_submit_char(outc);
     }
     prev_scancode = scancode;

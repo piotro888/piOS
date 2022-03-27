@@ -11,12 +11,12 @@ AOBJS=\
 	boot.ao\
 	kstart.ao\
 	panic.ao\
-	driver/freq.ao\
 	driver/keyboard.ao\
 	driver/sd.ao\
 	driver/spi.ao\
 	driver/tty.ao\
 	fs/dirtree.ao\
+	fs/kbd.ao\
 	fs/tar.ao\
 	fs/vfs.ao\
 	irq/interrupt.ao\
