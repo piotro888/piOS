@@ -30,6 +30,7 @@ AOBJS=\
 	libk/log.ao\
 	libk/string.ao\
 	libk/con/semaphore.ao\
+	libk/con/spinlock.ao\
 	proc/cswitch.ao\
 	proc/sched.ao\
 	proc/virtual.ao
