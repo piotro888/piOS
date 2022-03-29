@@ -48,8 +48,9 @@ void sched_pick_next() {
 
         if(lproc->state == PROC_STATE_BLOCKED) {
             // check if blocked process is unblocked now
-            if(lproc->sema_blocked->count > 0) {
+            if(lproc->sema_blocked && lproc->sema_blocked->count > 0) {
                 lproc->state = PROC_STATE_RUNNABLE;
+                lproc->sema_blocked = NULL;
                 break;
             }
         }
@@ -85,6 +86,13 @@ int make_kernel_thread(char* name, void (*entry)()) {
 
     /* assembly BUG to resolve */
     p->pc = (int)entry+1;
+
+    // reset blocked status
+    p->sema_blocked = NULL;
+
+    // initialize fd table as free
+    for(int i=0; i<PROC_MAX_FILES; i++)
+        p->open_files[i].vnode = NULL;
 
     // thread is ready to execute now
     p->state = PROC_STATE_RUNNABLE;
