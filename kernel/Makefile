@@ -15,6 +15,7 @@ AOBJS=\
 	driver/sd.ao\
 	driver/spi.ao\
 	driver/tty.ao\
+	driver/vga.ao\
 	fs/dirtree.ao\
 	fs/kbd.ao\
 	fs/tar.ao\
