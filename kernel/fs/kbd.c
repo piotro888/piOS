@@ -3,6 +3,8 @@
 #include <libk/types.h>
 #include <libk/con/spinlock.h>
 #include <libk/con/semaphore.h>
+#include <libk/ringbuff.h>
+#include <libk/assert.h>
 
 /* Temporary vfs device hooked up
  * to PS/2 keyboard driver.
@@ -10,9 +12,7 @@
  */
 
 #define BUFF_SIZE 16
-
-char c_buff[BUFF_SIZE];
-int c_buff_head = 0, c_buff_tail = 0;
+struct ringbuff c_buff;
 
 static struct spinlock read_spinlock;
 static struct semaphore data_available;
@@ -23,29 +23,21 @@ int kbd_get_fid(char* path) {
 
 size_t kbd_read(struct fd_info* file, char* buff, size_t len) {
     spinlock_lock(&read_spinlock);
-    while(c_buff_head == c_buff_tail) {
+    while(!ringbuff_length(&c_buff)) {
         spinlock_unlock(&read_spinlock);
-        semaphore_down(&data_available); // block until some data is in the buffer
-        spinlock_lock(&read_spinlock); // lock reading (and tail modification) to one process
+        semaphore_down(&data_available); // sleep until some data is in the buffer
+        spinlock_lock(&read_spinlock); // lock reading (and tail/length modification) to one process
     }
 
-    size_t size_to_read = (c_buff_head > c_buff_tail ? c_buff_head-c_buff_tail : BUFF_SIZE-c_buff_tail+c_buff_head);
-    if(size_to_read > len)
-        size_to_read = len;
+    size_t size = ringbuff_read(&c_buff, buff, len);
+    ASSERT(size != 0); // spinlock fail?
 
-    for(size_t i=0; i<size_to_read; i++) {
-        *(char*)buff = c_buff[c_buff_tail];
-        (char*)buff++;
-        if(++c_buff_tail == BUFF_SIZE)
-            c_buff_tail = 0;
-    }
-
-    if(c_buff_head != c_buff_tail)
-        semaphore_binary_up(&data_available); // data is still in buffer, unblock other process
+    if(ringbuff_length(&c_buff))
+        semaphore_binary_up(&data_available); // data is still in buffer, wake up other process
 
     spinlock_unlock(&read_spinlock);
 
-    return size_to_read;
+    return size;
 }
 
 size_t kbd_write(struct fd_info* file, void* buff, size_t len) {
@@ -53,11 +45,7 @@ size_t kbd_write(struct fd_info* file, void* buff, size_t len) {
 }
 
 void kbd_vfs_submit_char(char c) {
-    c_buff[c_buff_head] = c;
-
-    if (++c_buff_head == BUFF_SIZE)
-        c_buff_head = 0;
-    // the best way seems to ignore buffer overruns and prevent locking on submit (irq driven)
+    ringbuff_force_write(&c_buff, &c, 1);
 
     semaphore_binary_up(&data_available);
 }
@@ -70,7 +58,7 @@ void kbd_vfs_init() {
     };
     vfs_mount("/dev/kbd/", &kbd_vfs_reg);
 
-    c_buff_head = c_buff_tail = 0;
+    ringbuff_init(&c_buff, BUFF_SIZE);
     spinlock_init(&read_spinlock);
     semaphore_init(&data_available);
 }

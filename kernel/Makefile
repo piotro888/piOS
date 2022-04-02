@@ -29,6 +29,7 @@ AOBJS=\
 	libk/kprintf.ao\
 	libk/list.ao\
 	libk/log.ao\
+	libk/ringbuff.ao\
 	libk/string.ao\
 	libk/con/semaphore.ao\
 	libk/con/spinlock.ao\
