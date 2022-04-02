@@ -33,28 +33,30 @@ size_t strlen(char* str) {
         len++;
 
     return len;
-} 
+}
 
-void strcpy(char* trg, char* src) {
+char* strcpy(char* dst, char* src) {
     while(*src)
-        *(trg++) = *(src++);
-    *trg = *src; // copy null byte
+        *(dst++) = *(src++);
+    *dst = *src; // copy null byte
+    return dst;
 }
 
 // Copy to max n bytes of dst and pad left space with zeroes
 // May not produce null terminated strings if len(src) >= n
-void strncpy(char* dst, char* src, size_t len) {
+char* strncpy(char* dst, char* src, size_t len) {
     while(*src && len--) {
         *(dst++) = *(src++);
     }
 
     while(len--)
         *(dst++) = '\0';
+    return dst;
 }
 
-char* strchr(char* str, char ch) {
+char* strchr(char* str, int ch) {
     do {
-        if(*str == ch)
+        if(*str == (char)ch)
             return str;
     } while (*str++);
     return NULL;

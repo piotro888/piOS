@@ -8,10 +8,10 @@ size_t strncmp(char* str1, char* str2, size_t len);
 
 size_t strlen(char* str);
 
-void strcpy(char* dst, char* src);
-void strncpy(char* dst, char* src, size_t len);
+char* strcpy(char* dst, char* src);
+char* strncpy(char* dst, char* src, size_t len);
 
-char* strchr(char* str, char ch);
+char* strchr(char* str, int ch);
 
 void strcpynt(char* dst, char* src, size_t len);
 void strprefcpy(char* dst, char* src, size_t len);
@@ -22,8 +22,6 @@ void memcpy();
 void memmove();
 void memset();
 void memcmp();
-void strcpy();
-void strncpy();
 */
 
 #endif
