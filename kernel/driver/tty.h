@@ -6,7 +6,9 @@
 void init_tty();
 void tty_putc(char c);
 void tty_puts(const char* s);
-void tty_set_color(uint8_t color);
-void tty_print_buffer();
+
+void tty_submit_char(char c);
+
+void tty_set_color(uint8_t color)  __attribute__((deprecated));
 
 #endif
