@@ -3,6 +3,7 @@
 #include <libk/types.h>
 #include <libk/ringbuff.h>
 #include <libk/con/semaphore.h>
+#include <libk/math.h>
 
 static int tty_cursor_col, tty_cursor_row;
 
@@ -41,10 +42,15 @@ void tty_linebuff_erase() {
             tty_cursor_col = VGA_TEXT_WIDTH;
         }
 
-        // NOTE: Reversing line wrapping on backspace is not compatible with posix
-        // posix does only '\b' ' ' '\b' which stops on begin of screen
+        // NOTE: Reversing line wrapping on backspace is not compliant with posix tty
+        // posix does only '\b' ' ' '\b' which stops on begin of screen line
         vga_put_char_at(' ', tty_cursor_row, tty_cursor_col);
     }
+}
+
+void linebuff_putc(char c) {
+    if(line_buff_len < TTY_BUFF_SIZE)
+        line_buff[line_buff_len++] = c;
 }
 
 // TODO: Implement reprint (see stty rprnt) on ctrl-r? & VKILL
@@ -54,15 +60,15 @@ void tty_linebuff_erase() {
 void tty_submit_char(char c) {
     if(IS_PRINTABLE(c)) {
         // save in line buffer ~ ICANON mode, only on input from kbd
-        if(line_buff_len < TTY_BUFF_SIZE)
-            line_buff[line_buff_len++] = c;
-
+        linebuff_putc(c);
         // echo char in console
         tty_putc(c);
     } else {
         /* Some characters have different meaning when entered from keyboard */
         switch (c) {
+            // in linux ctrl-v to skip interpretation and pass to `default` handling
             case '\n':
+                linebuff_putc(c);
                 tty_submit_line_buff();
                 tty_new_line();
                 tty_cursor_col = 0;
@@ -77,11 +83,72 @@ void tty_submit_char(char c) {
                     tty_putc('@' + c);
                 else
                     tty_putc('?'); // DEL (127) character
+                linebuff_putc(c);
+                /* In Linux tty, until -ctlecho is set all chars are displayed in caret notation here,
+                 * if -ctlecho is disabled then it passes control escapes to tetminal putc and interprets them there,
+                 * allowing to send escapes from keyboard */
         }
     }
 }
 
+/* Hacky escape code parsing */
+static int esc_stage = 0;
+static int esc_args[2];
+static int in_escape_code = 0;
+void handle_escapes(char c) {
+    if(esc_stage == 0) {
+        if(c != '[') {
+            in_escape_code = 0;
+            esc_stage = 0;
+            return; // bad code
+        }
+
+        esc_stage++;
+        esc_args[0] = esc_args[1] = 0;
+        return;
+    }
+
+    if(esc_stage == 1 || esc_stage == 2) { // parsing arguments
+        if(c == ';')
+            esc_stage++;
+        else if(c >= '0' && c <= '9') {
+            esc_args[esc_stage-1] *= 10;
+            esc_args[esc_stage-1] += c-'0';
+        } else {
+            esc_stage = 3;
+        }
+    }
+
+    if(esc_stage == 3) { // final byte
+        if(c == 'm') { // set color
+            int fg = (esc_args[0] < 38 ? esc_args[0]-30 : (esc_args[0]-90)|(0x08));
+            int bg = (esc_args[1] < 38 ? (esc_args[1] ? esc_args[1]-30 : 0) : (esc_args[1]-90)|(0x08))<<4;
+            vga_set_color(fg | bg);
+        } else if(c == 'A') {
+            tty_cursor_row -= MAX(MAX(esc_args[0], 1), 0);
+        } else if(c == 'B') {
+            for(int i=0; i<MAX(esc_args[0], 1); i++)
+                tty_new_line();
+        } else if(c == 'C') {
+            tty_cursor_col = MIN(tty_cursor_col+MAX(esc_args[0], 1), VGA_TEXT_WIDTH-1);
+        } else if(c == 'D') {
+            tty_cursor_col = MAX(tty_cursor_col-MAX(esc_args[0], 1), 0);
+        } else if(c == 'H') {
+            tty_cursor_col = MAX(esc_args[0], VGA_TEXT_WIDTH);
+            tty_cursor_row = MAX(esc_args[1], VGA_TEXT_HEIGHT);
+        }
+
+        in_escape_code = 0;
+        esc_stage = 0;
+    }
+}
+
 void tty_putc(char c) {
+    if(in_escape_code) {
+        handle_escapes(c);
+        return;
+    }
+
     if(!IS_PRINTABLE(c)) {
         switch(c) {
             case '\n':
@@ -91,6 +158,9 @@ void tty_putc(char c) {
             case '\b':
                 if(tty_cursor_col > 0)
                     tty_cursor_col--;
+                break;
+            case '\033': // ESC char (this is ^[)
+                in_escape_code = 1;
                 break;
             default:
                 break;
