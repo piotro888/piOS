@@ -36,6 +36,9 @@ void interrupt(const char* state) {
         should_switch_thread = 1;
     }
 
+    if(current_proc->type == PROC_TYPE_INIT)
+        should_switch_thread = 1;
+
     // interrupt request and syscall could happen at same time
     // clear interrupt pending from controller and process interrupts
     if(IRQ_PENDING(0)) {

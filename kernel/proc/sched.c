@@ -23,15 +23,26 @@ int pid_now = 0;
 // FIXME: Request pages from virtual memory manager
 int first_free_page = 17;
 
+void idle_task() { for(;;); }
+struct proc idle_struct;
+
 void scheduler_init() {
     list_init(&proc_list);
     scheduling_enabled = 0;
+
+    // init idle task
+    idle_struct.pid = 0;
+    idle_struct.state = PROC_STATE_RUNNABLE;
+    idle_struct.type = PROC_TYPE_INIT;
+    strcpy(idle_struct.name, "idle");
+    idle_struct.pc = (int)idle_task+1;
 }
 
 /* Set current_proc to next process */
 void sched_pick_next() {
     ASSERT(proc_list.first != NULL);
 
+    struct list_node* first_element = last_element;
     for(;;) {
         // if reached end of list return to beginning
         if (last_element == NULL || last_element->next == NULL)
@@ -55,7 +66,11 @@ void sched_pick_next() {
             }
         }
 
-        // FIXME: Add kernel idle task, and schedule it if no process is runnable
+        if(last_element == first_element) {
+            // if no process is currently available, set kernel idle task to allow device irq
+            current_proc = &idle_struct;
+            return;
+        }
     }
 
     current_proc = ((struct proc*) last_element->val);
