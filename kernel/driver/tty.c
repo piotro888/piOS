@@ -3,7 +3,10 @@
 #include <libk/types.h>
 #include <libk/ringbuff.h>
 #include <libk/con/semaphore.h>
+#include <libk/con/spinlock.h>
 #include <libk/math.h>
+#include <fs/vfs.h>
+#include <proc/sched.h>
 
 static int tty_cursor_col, tty_cursor_row;
 
@@ -13,6 +16,11 @@ static int line_buff_len;
 
 static struct ringbuff read_rb;
 static struct semaphore read_data_signal;
+static struct spinlock read_sl;
+
+static struct ringbuff write_rb;
+static struct semaphore write_data_signal, write_not_full;
+static struct spinlock write_sl;
 
 #define IS_PRINTABLE(x) ((x) >= 32 && (x) <= 126)
 
@@ -187,13 +195,82 @@ void tty_puts(const char* str) {
         tty_putc(*str++);
 }
 
+int tty_fs_get_fid(char* path) { return 0; }
+
+size_t tty_fs_read(struct fd_info* file, char* buff, size_t len) {
+    spinlock_lock(&read_sl);
+    while(ringbuff_length(&read_rb) < 1) {
+        spinlock_unlock(&read_sl);
+        semaphore_down(&read_data_signal);
+        spinlock_lock(&read_sl);
+    }
+
+    size_t rl = ringbuff_read(&read_rb, buff, len);
+
+    if(ringbuff_length(&read_rb))
+        semaphore_binary_up(&read_data_signal);
+
+    spinlock_unlock(&read_sl);
+    return rl;
+}
+
+size_t tty_fs_write(struct fd_info* file, char* buff, size_t len) {
+    spinlock_lock(&write_sl);
+    size_t write_len = ringbuff_write(&write_rb, buff, len);
+    while (write_len < len) {
+        semaphore_down(&write_not_full);
+        write_len += ringbuff_write(&write_rb, buff+write_len, len-write_len);
+    }
+
+    spinlock_unlock(&write_sl);
+    semaphore_binary_up(&write_data_signal);
+    return write_len;
+}
+
+void __attribute__((noreturn)) tty_submit_thread() {
+    /* submits tty input in order from fs buffer */
+    char buff[TTY_BUFF_SIZE];
+    for (;;) {
+        // no spinlocks are needed - only this thread is reading
+        while (!ringbuff_length(&write_rb))
+            semaphore_down(&write_data_signal);
+
+        size_t read_len = ringbuff_read(&write_rb, buff, TTY_BUFF_SIZE);
+        semaphore_binary_up(&write_not_full);
+
+        for(size_t i=0; i<read_len; i++)
+            tty_putc(buff[i]);
+    }
+}
+
+void tty_direct_write(char* buff, size_t len) {
+    tty_fs_write(NULL, buff, len);
+}
+
+void tty_mnt_vfs() {
+    const struct vfs_reg reg = {
+            tty_fs_get_fid,
+            tty_fs_read,
+            tty_fs_write
+    };
+    vfs_mount("/dev/tty/", &reg);
+}
+
 void init_tty() {
     vga_init(); // init gpu to text mode
 
     tty_cursor_col = tty_cursor_row = 0;
     line_buff_len = 0;
+
     ringbuff_init(&read_rb, TTY_BUFF_SIZE);
     semaphore_init(&read_data_signal);
+    spinlock_init(&read_sl);
+    ringbuff_init(&write_rb, TTY_BUFF_SIZE);
+    semaphore_init(&write_data_signal);
+    semaphore_init(&write_not_full);
+    spinlock_init(&write_sl);
+
+    make_kernel_thread("drv::TTY", tty_submit_thread);
 
     vga_clear_screen();
 }

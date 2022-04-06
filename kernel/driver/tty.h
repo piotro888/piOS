@@ -4,8 +4,11 @@
 #include <libk/types.h>
 
 void init_tty();
+void tty_mnt_vfs();
+
 void tty_putc(char c);
 void tty_puts(const char* s);
+void tty_direct_write(char* buff, size_t len);
 
 void tty_submit_char(char c);
 
