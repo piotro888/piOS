@@ -56,7 +56,7 @@ void kbd_vfs_init() {
             kbd_read,
             kbd_write
     };
-    vfs_mount("/dev/kbd/", &kbd_vfs_reg);
+    vfs_mount("/dev/kbd", &kbd_vfs_reg);
 
     ringbuff_init(&c_buff, BUFF_SIZE);
     spinlock_init(&read_spinlock);

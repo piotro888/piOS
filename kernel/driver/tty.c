@@ -253,7 +253,7 @@ void tty_mnt_vfs() {
             tty_fs_read,
             tty_fs_write
     };
-    vfs_mount("/dev/tty/", &reg);
+    vfs_mount("/dev/tty", &reg);
 }
 
 void init_tty() {

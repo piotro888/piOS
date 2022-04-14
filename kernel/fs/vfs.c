@@ -97,41 +97,59 @@ struct vfs_node* vnode_tree_find(char* path) {
 
     char* dirname = ++path;  // skip first slash (already matched in vfs_root)
     char* next_tok = path;
-    while((next_tok = strchr(next_tok+1, '/')) != NULL) {
+    while(*dirname) {
+        next_tok = strchr(next_tok+1, '/');
+        if(next_tok == NULL) // file nodes without /
+            next_tok = dirname+strlen(dirname)-1;
+
         int subdir_found = 0;
-        // FIXME: support /.././
+        if(strncmp(dirname, "../", 3) == 0) {
+            node = node->parent;
+            dirname = next_tok+1;
+            subdir_found = 1;
+            continue; // path_search is already set for this node
+        } else if(strncmp(dirname, "./", 2) == 0) {
+            dirname = next_tok+1;
+            subdir_found = 1;
+            continue;
+        }
+
         list_foreach(&node->subdirs) {
             struct vfs_node* sub = LIST_FOREACH_VAL(struct vfs_node*);
             if(strncmp(dirname, sub->name, next_tok-dirname+1) == 0) {
                 node = sub;
                 node->path_search = next_tok;
                 dirname = next_tok+1;
-                subdir_found = 1;
+
+                if(*next_tok == '/')
+                    subdir_found = 1;
                 break;
             }
         }
-        if(subdir_found)
-            continue;
-
-        // vnode not found -> use last vnode with handles set
-        while(node != &vfs_root) {
-            if(node->handles)
-                return node;
-
-            node = node->parent;
-        }
-        return NULL;
+        if(!subdir_found)
+            break;
     }
-    return node;
+
+    // use last vnode with handles set
+    while(node != &vfs_root) {
+        if(node->handles)
+            return node;
+
+        node = node->parent;
+    }
+    return NULL;
 }
 
 struct vfs_node* vnode_tree_create(char* path) {
     struct vfs_node* node = &vfs_root;
-    // FIXME: Support file nodes?
 
     char* dirname = ++path; // skip first slash (already matched in vfs_root)
     char* next_tok = path;
-    while((next_tok = strchr(next_tok+1, '/')) != NULL) {
+    while(*dirname) {
+        next_tok = strchr(next_tok+1, '/');
+        if(next_tok == NULL)
+            next_tok = dirname+strlen(dirname)-1;
+
         int subdir_found = 0;
         list_foreach(&node->subdirs) {
             struct vfs_node* sub = LIST_FOREACH_VAL(struct vfs_node*);
@@ -139,7 +157,9 @@ struct vfs_node* vnode_tree_create(char* path) {
                 // enter next node in path
                 node = sub;
                 dirname = next_tok+1;
-                subdir_found = 1;
+
+                if(*next_tok == '/')
+                    subdir_found = 1;
                 break;
             }
         }
@@ -150,6 +170,7 @@ struct vfs_node* vnode_tree_create(char* path) {
         struct vfs_node* new_node = kmalloc(sizeof(struct vfs_node));
         new_node->name = kmalloc(next_tok-path+2);
         new_node->parent = node;
+        new_node->handles = NULL;
         strprefcpy(new_node->name, dirname, next_tok-dirname+1);
         list_init(&new_node->subdirs);
         list_append(&node->subdirs, new_node);
