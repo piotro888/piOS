@@ -31,6 +31,7 @@ AOBJS=\
 	libk/log.ao\
 	libk/ringbuff.ao\
 	libk/string.ao\
+	libk/con/blockq.ao\
 	libk/con/semaphore.ao\
 	libk/con/spinlock.ao\
 	proc/cswitch.ao\
