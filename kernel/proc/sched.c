@@ -77,7 +77,7 @@ void sched_pick_next() {
 }
 
 /* Prepare new kernel thread object and return its pid */
-int make_kernel_thread(char* name, void (*entry)()) {
+int make_kernel_thread(char* name, void __attribute__((noreturn)) (*entry)()) {
     struct proc* p = kmalloc(sizeof(struct proc));
 
     p->pid = ++pid_now;
