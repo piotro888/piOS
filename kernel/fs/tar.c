@@ -12,6 +12,7 @@
 char sector_buff[SECTOR_SIZE];
 
 struct dir_t_node tar_dir_tree;
+struct semaphore request_wait;
 
 int convert_octal(char* octal)  {
     int res = 0;
@@ -21,6 +22,16 @@ int convert_octal(char* octal)  {
         res += cint;
     }
     return res;
+}
+
+void sd_read_adapter(char* buff, size_t block) {
+    struct sd_driver_req req = {
+            buff,
+            block,
+            &request_wait
+    };
+    sd_submit_request(req);
+    semaphore_down(&request_wait);
 }
 
 /* For use in vfs. Returns unique file (inode) number or kernel error */
@@ -34,7 +45,7 @@ int tar_get_fid(char* path) {
 }
 
 size_t tar_read(struct fd_info* file, void* buff, size_t len) {
-    sd_read_block(sector_buff, file->inode);
+    sd_read_adapter(sector_buff, file->inode);
 
     struct tar_t* header = sector_buff;
     
@@ -48,12 +59,12 @@ size_t tar_read(struct fd_info* file, void* buff, size_t len) {
     int pos = file->seek % SECTOR_SIZE;
     int sector = file->inode + (file->seek / SECTOR_SIZE) + 1; // inode is header sector number
     char* data = sector_buff + pos;
-    sd_read_block(sector_buff, sector);
+    sd_read_adapter(sector_buff, sector);
 
     char* buffc = (char*) buff;
     for(size_t i=0; i<len; i++) {
         if(pos++ == 512) {
-            sd_read_block(sector_buff, ++sector);
+            sd_read_adapter(sector_buff, ++sector);
             pos = 0;
         }
         *buffc++ = *data++;
@@ -64,12 +75,13 @@ size_t tar_read(struct fd_info* file, void* buff, size_t len) {
 }
 
 void tar_make_dir_tree() {
+    semaphore_init(&request_wait);
     int empty_sectors = 0, sector = 0;
     struct tar_t* header = (struct tar_t*) sector_buff;
     dir_tree_init(&tar_dir_tree);
 
     while (empty_sectors < 2) {
-        sd_read_block(sector_buff, sector);
+        sd_read_adapter(sector_buff, sector);
 
         if(header->name[0] == '\0') {
             empty_sectors++;
@@ -94,7 +106,6 @@ void tar_make_dir_tree() {
         int sectors_skip = (size+SECTOR_SIZE-1)/SECTOR_SIZE + 1;
         sector += sectors_skip;
     }
-    dir_tree_printf(&tar_dir_tree, 0);
 }
 
 size_t tar_write(struct fd_info* file, void* buff, size_t len) {
@@ -110,22 +121,4 @@ void tar_mount_sd() {
     };
 
     vfs_mount("/sd/", &handles);
-}
-
-void tar_test() {
-    /*int fd_1 = open("kernel/boot.s");
-    kprintf("fd: %d", fd_1);
-    int fd_2 = open("kernel/panic.c");
-    kprintf("\nfd_p: %d", fd_2);
-    close(fd_1);
-    int fd_3 = open("nf");
-    kprintf("\nfd3: %d", fd_3);
-    kprintf("Reading file3:\n");
-    char buff[256];
-    int rs = read(fd_3, buff, 128);
-    kprintf("Read %d chars: %s", rs, buff);
-    rs = read(fd_3, buff, 10);
-    buff[11] = '\0';
-    kprintf("\nand 10 more (%d)...\n %s", rs, buff);
-     */
 }
