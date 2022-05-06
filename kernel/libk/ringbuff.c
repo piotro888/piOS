@@ -2,6 +2,7 @@
 #include <libk/kmalloc.h>
 
 void ringbuff_init(struct ringbuff* rb, size_t size) {
+    size++; // ringbuff always keeps at least one free index
     rb->head = 0;
     rb->tail = 0;
     rb->size = size;
@@ -15,7 +16,7 @@ size_t ringbuff_length(struct ringbuff* rb) {
 size_t ringbuff_write(struct ringbuff* rb, u8* buff, size_t n) {
     size_t wlen;
     for(wlen=0; wlen<n; wlen++) {
-        if(rb->head == rb->tail-1)
+        if(rb->head == rb->tail-1 || (rb->tail == 0 && rb->head == rb->size-1))
             break;
 
         rb->buff[rb->head] = *buff++;
