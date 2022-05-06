@@ -123,8 +123,8 @@ void _kstart() {
     timer_init();
     scheduler_init();
     kprintf("init done.\n");
+    kprintf("happy 100th commit! :)\n");
     kprintf(BOOT_ART);
-    tar_make_dir_tree();
 
     log("mounting sd card");
     tar_mount_sd();

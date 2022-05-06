@@ -2,11 +2,11 @@
 
 #include <driver/spi.h>
 #include <libk/kprintf.h>
+#include <libk/con/blockq.h>
+#include <proc/sched.h>
 #include <panic.h>
 
 #define SD_DEVICE_NO 0
-
-#define SECTOR_SIZE 512
 
 #define CMD0 0
 #define CMD0_CRC 0x4A
@@ -25,13 +25,17 @@
 #define STATUS_ILLEGAL_CMD 0x5
 
 #define SD_RESP_TIMEOUT 8
-#define SD_INIT_TIMEOUT 100
+#define SD_INIT_TIMEOUT 200
 
 #define SD_READ_TOKEN 0xFE
 
 #define OCR_1_3V3 0x10
 #define OCR_0_HC 0x80
 #define CMD8_3_VOLATAGE 0x1
+
+#define SD_REQ_QUEUE_SIZE 32
+
+struct blockq requests;
 
 void sd_command(uint8_t index, uint16_t arg_upper, uint16_t arg_lower, uint8_t crc, uint8_t* resp_buff, uint8_t resp_size) {
     spi_transmit(0x40 | index);
@@ -118,10 +122,24 @@ void sd_read_block(uint8_t* buff, uint16_t addr) {
     spi_transmit(0xFF);
 }
 
+__attribute__((noreturn))
+void sd_driver_loop() {
+    for(;;) {
+        struct sd_driver_req req;
+        blockq_pop(&requests, &req);
+        sd_read_block(req.buff, req.block_nr);
+        semaphore_up(req.notify_done);
+    }
+}
+
+void sd_submit_request(struct sd_driver_req req) {
+    blockq_push(&requests, &req);
+}
+
 void sd_init() {
     uint8_t r;
     uint8_t rb[5];
-    
+
     spi_cs_set(1, SD_DEVICE_NO); // disable chip select
     for(int i=0; i<74; i++) {
         spi_transmit(0xFF);
@@ -147,6 +165,11 @@ void sd_init() {
         kprintf("driver/sd: invalid response to CMD8: 0x%x\n", rb[0]);
         panic("driver/sd: sd card failed to initialize");
     }
-    
+
     kprintf("driver/sd: sd card initialized\n");
+}
+
+void sd_register_thread() {
+    blockq_init(&requests, SD_REQ_QUEUE_SIZE, sizeof(struct sd_driver_req));
+    make_kernel_thread("drv::SD", sd_driver_loop);
 }
