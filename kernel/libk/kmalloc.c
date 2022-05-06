@@ -2,8 +2,8 @@
 #include <panic.h>
 
 #define KERNEL_HEAP_START 0xA000
-#define KERNEL_HEAP_END 0xFFFF
-#define CHUNK_SIZE 16
+#define KERNEL_HEAP_END 0xE3FF
+#define CHUNK_SIZE 8
 #define KERNEL_HEAP_SIZE (KERNEL_HEAP_END-KERNEL_HEAP_START)
 
 const int heap_arr_size = KERNEL_HEAP_SIZE/CHUNK_SIZE;
@@ -42,6 +42,21 @@ void* kmalloc(size_t size) {
         panic("kmalloc: out of memory");
 
     return ptr;
+}
+
+size_t mem_free_size() {
+    size_t free = 0;
+    int current_chunk = 0;
+    while(current_chunk < heap_arr_size) {
+        if(memory[current_chunk] == NULL) {
+            free += CHUNK_SIZE;
+            current_chunk++;
+        } else {
+            current_chunk += memory[current_chunk];
+        }
+    }
+
+    return free*2;
 }
 
 void kfree(void* ptr) {

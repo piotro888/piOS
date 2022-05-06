@@ -9,4 +9,6 @@ void* kmalloc(size_t size);
 
 void kfree(void* ptr);
 
+size_t mem_free_size();
+
 #endif
