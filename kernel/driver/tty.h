@@ -3,8 +3,10 @@
 
 #include <libk/types.h>
 
-void init_tty();
+void tty_init_basic();
+void tty_init_driver();
 void tty_mnt_vfs();
+void tty_register_thread();
 
 void tty_putc(char c);
 void tty_puts(const char* s);

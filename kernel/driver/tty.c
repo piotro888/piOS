@@ -10,8 +10,10 @@
 
 static int tty_cursor_col, tty_cursor_row;
 
-#define TTY_BUFF_SIZE 128
-static char line_buff[TTY_BUFF_SIZE];
+#define TTY_BUFF_SIZE 255
+#define TTY_SUBMIT_BUFF 64
+#define LINE_BUFF_SIZE 128
+static char line_buff[LINE_BUFF_SIZE];
 static int line_buff_len;
 
 static struct ringbuff read_rb;
@@ -227,15 +229,15 @@ size_t tty_fs_write(struct fd_info* file, char* buff, size_t len) {
     return write_len;
 }
 
-void __attribute__((noreturn)) tty_submit_thread() {
+void __attribute__((noreturn)) tty_driver_thread() {
     /* submits tty input in order from fs buffer */
-    char buff[TTY_BUFF_SIZE];
+    char buff[TTY_SUBMIT_BUFF];
     for (;;) {
-        // no spinlocks are needed - only this thread is reading
+        // no spinlock is needed - only this thread is reading from ringbuff
         while (!ringbuff_length(&write_rb))
             semaphore_down(&write_data_signal);
 
-        size_t read_len = ringbuff_read(&write_rb, buff, TTY_BUFF_SIZE);
+        size_t read_len = ringbuff_read(&write_rb, buff, TTY_SUBMIT_BUFF);
         semaphore_binary_up(&write_not_full);
 
         for(size_t i=0; i<read_len; i++)
@@ -256,12 +258,18 @@ void tty_mnt_vfs() {
     vfs_mount("/dev/tty", &reg);
 }
 
-void init_tty() {
+// Initialize basic TTY/VGA functionality to use kprintf during boot (no malloc allowed here!)
+void tty_init_basic() {
     vga_init(); // init gpu to text mode
 
     tty_cursor_col = tty_cursor_row = 0;
     line_buff_len = 0;
 
+    vga_clear_screen();
+}
+
+// Initialize TTY driver over FS device. Requires tty_init_basic to be called beforehand
+void tty_init_driver() {
     ringbuff_init(&read_rb, TTY_BUFF_SIZE);
     semaphore_init(&read_data_signal);
     spinlock_init(&read_sl);
@@ -269,8 +277,8 @@ void init_tty() {
     semaphore_init(&write_data_signal);
     semaphore_init(&write_not_full);
     spinlock_init(&write_sl);
+}
 
-    make_kernel_thread("drv::TTY", tty_submit_thread);
-
-    vga_clear_screen();
+void tty_register_thread() {
+    make_kernel_thread("drv_tty", tty_driver_thread);
 }
