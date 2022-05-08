@@ -1,7 +1,6 @@
 #include "sched.h"
 
 #include <libk/kmalloc.h>
-#include <libk/log.h>
 #include <libk/string.h>
 #include <libk/list.h>
 #include <libk/assert.h>
@@ -23,12 +22,13 @@ int pid_now = 0;
 // FIXME: Request pages from virtual memory manager
 int first_free_page = 17;
 
-void idle_task() { for(;;); }
+extern void __attribute__((noreturn)) idle_task();
 struct proc idle_struct;
 
 void scheduler_init() {
     list_init(&proc_list);
     scheduling_enabled = 0;
+    pid_now = 0;
 
     // init idle task
     idle_struct.pid = 0;
@@ -36,6 +36,8 @@ void scheduler_init() {
     idle_struct.type = PROC_TYPE_INIT;
     strcpy(idle_struct.name, "idle");
     idle_struct.pc = (int)idle_task+1;
+    for(int i=0; i<16; i++)
+        idle_struct.prog_pages[i] = i;
 }
 
 /* Set current_proc to next process */

@@ -2,7 +2,6 @@
 ; 0001000E
 .romd
 
-
 set_program_mem:
     srl r4, 1 ; save flags
 
@@ -154,5 +153,11 @@ c_switch:
     srl r0, 6 ; recover r1 saved before paging enable
 
     irt ; jump to pc stored in sr3
+
+; Thread to schedule when no process is ready. It is interruptable and not allowed to use memory
+idle_task:
+    ldi r0, 0
+    idle_task_l:
+        jmp idle_task_l
 
 .ramd
