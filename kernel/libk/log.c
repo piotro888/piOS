@@ -26,6 +26,8 @@ void internal_log(char* msg, char* opt_fn_name, int opt_fn_line, int opt_err_lev
         err_string = "{W}";
     else if (opt_err_level == 2)
         err_string = "{E}";
+    else if (opt_err_level == 4)
+        err_string = "{INTD}";
 
     char line_buff[5];
     line_buff[0] = '\0';
@@ -42,8 +44,12 @@ void internal_log(char* msg, char* opt_fn_name, int opt_fn_line, int opt_err_lev
 
     va_end(args);
 
-    if(LOG_TARGET == LOG_TARGET_VGA)
-        tty_puts(log_buff);
+    if(LOG_TARGET == LOG_TARGET_VGA) {
+        if(opt_err_level == 4)
+            tty_puts(log_buff); // blocking is not allowed in interrupt disabled sections
+        else
+            tty_direct_write(log_buff, log_ptr - log_buff + 1);
+    }
 }
 
 /*

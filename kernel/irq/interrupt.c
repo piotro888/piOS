@@ -26,13 +26,12 @@ void interrupt(const char* state) {
     int syscall_flag = (*(int*)(state+16-13)) & 0x8;
 
     if(syscall_flag && (current_proc->type == PROC_TYPE_USER || current_proc->type == PROC_TYPE_PRIV)) {
-        log("syscall: %d", current_proc->regs[0]);
+        log_irq("syscall: %d", current_proc->regs[0]);
         should_switch_thread = 1;
     }
 
     /* syscall from thread is always just YIELD */
     if(syscall_flag && current_proc->type == PROC_TYPE_KERNEL) {
-        log("yield");
         should_switch_thread = 1;
     }
 
