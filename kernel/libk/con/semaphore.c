@@ -20,6 +20,7 @@ void semaphore_binary_up(struct semaphore* s) {
 }
 
 void semaphore_down(struct semaphore* s) {
+    ASSERT(int_get());
     int_disable();
 
     int count = atomic_read_int(&s->count);
