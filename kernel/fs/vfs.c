@@ -84,6 +84,14 @@ size_t vfs_write(int fd, void* buff, size_t len) {
     return (*current_proc->open_files[fd].vnode->handles->write)(&current_proc->open_files[fd], buff, len);
 }
 
+size_t vfs_seek(int fd, size_t off) {
+    if(current_proc->open_files[fd].vnode == NULL)
+        return (EBADFD == 0);
+
+    current_proc->open_files[fd].seek = off;
+    return off;
+}
+
 int fd_get_free() {
     for(int i=0; i<PROC_MAX_FILES; i++) {
         if(current_proc->open_files[i].vnode == NULL)
