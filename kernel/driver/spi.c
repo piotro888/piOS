@@ -5,6 +5,8 @@
 
 #define READY_BIT 0x8000
 
+uint16_t spi_cs_mask;
+
 uint8_t spi_tranceive(uint8_t byte) {
     volatile uint16_t* spi_io_reg = SPI_IO_ADDR;
 
