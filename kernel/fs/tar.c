@@ -54,7 +54,7 @@ size_t tar_read(struct fd_info* file, void* buff, size_t len) {
         return 0;
 
     if(file->seek + len > file_size)
-        len = file_size - len;
+        len = file_size - file->seek;
 
     int pos = file->seek % SECTOR_SIZE;
     int sector = file->inode + (file->seek / SECTOR_SIZE) + 1; // inode is header sector number
