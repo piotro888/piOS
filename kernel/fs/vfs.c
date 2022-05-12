@@ -84,12 +84,21 @@ size_t vfs_write(int fd, void* buff, size_t len) {
     return (*current_proc->open_files[fd].vnode->handles->write)(&current_proc->open_files[fd], buff, len);
 }
 
-size_t vfs_seek(int fd, size_t off) {
+size_t vfs_seek(int fd, size_t off, int whence) {
     if(current_proc->open_files[fd].vnode == NULL)
         return (EBADFD == 0);
 
-    current_proc->open_files[fd].seek = off;
-    return off;
+    switch (whence) {
+        case SEEK_SET:
+            current_proc->open_files[fd].seek = off;
+            return off;
+        case SEEK_CUR:
+            current_proc->open_files[fd].seek += off;
+            return current_proc->open_files[fd].seek;
+        default: // FIXME: SIZE_END
+            return current_proc->open_files[fd].seek;
+    }
+
 }
 
 int fd_get_free() {

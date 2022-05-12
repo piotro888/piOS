@@ -41,7 +41,9 @@ int vfs_close(int fd);
 size_t vfs_read (int fd, void* buff, size_t len);
 size_t vfs_write(int fd, void* buff, size_t len);
 
-size_t vfs_seek(int fd, size_t off);
+size_t vfs_seek(int fd, size_t off, int whence);
+#define SEEK_SET 0
+#define SEEK_CUR 1
 
 #define ENOTFOUND 5
 #define ETOOMANYFILES 6
