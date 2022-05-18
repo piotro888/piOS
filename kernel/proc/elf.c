@@ -73,73 +73,105 @@ char ph_buff[PH_SIZE];
 #define GET_U16(buff, off) ((((u16)((buff)[(off)+1]))<<8u) | (u16)((buff)[(off)]))
 #define GET_U32(buff, off) ((((u32)((buff)[(off)+3]))<<24ul) | (((u32)((buff)[(off)+2]))<<16ul) | \
                             (((u32)((buff)[(off)]))<<8ul) | (u32)((buff)[(off)]))
-int lpl;
-void load_to_page(int fd, size_t off, size_t end_addr, int page) {
-    log("ltp %x:%x->%x phys %x virt %x", page, off, end_addr, (page<<11)|(off>>1), (lpl<<11)|(off>>1));
+
+void load_to_page(int fd, size_t off, size_t end_addr, int page, int prog) {
     ASSERT(end_addr < PAGE_SIZE);
     size_t m_addr = off;
     while (m_addr <= end_addr) {
-        //size_t read = vfs_read(fd, load_buff, MIN(LOAD_BUFF, (end_addr-m_addr)*2));
-        //read /= 2; // get size in memory address
-        size_t read = MIN(LOAD_BUFF, (end_addr-m_addr)*2);
+        size_t read = vfs_read(fd, load_buff, MIN(LOAD_BUFF, (end_addr - m_addr + (prog ? 2 : 1)) * 2));
+        read /= 2; // get size in memory address
+        ASSERT(read);
 
         for(size_t i=0; i<read; i++) // compress 8->16
             load_buff_c[i] = GET_U16(load_buff, i*2);
 
-        //load_into_userspace(page, load_buff_c, read, m_addr);
+        if(prog)
+            load_into_userspace_program(page, load_buff_c, read, m_addr);
+        else
+            load_into_userspace(page, load_buff_c, read, m_addr);
 
-        m_addr += read/2;
+        m_addr += read;
     }
 }
 
-int page_to_load(struct proc* proc, u16 vaddr) {
-    int page = (vaddr>>12);
-    // this is load address!! so page should be set for page/2 and load page shall be returned
-    // Real page (lsb is ignored, and it is msb of 16b addr)
-    if(proc->prog_pages[page/2] == 0xff)
-       proc->prog_pages[page/2] = first_free_page++;
-    // FIXME: prog pages should be requested from other int
-    // Shifted load page
-    log("ptl v%x pl%x p%x tp%x tl%x", vaddr, page, page/2, proc->prog_pages[page/2], (proc->prog_pages[page/2]<<1) + (page&1));
-    lpl = page;
-    return (proc->prog_pages[page/2]<<1) + (page&1);
+void zero_page(size_t off, size_t len, int page) {
+    ASSERT(off+len <= PAGE_SIZE);
+
+    map_page_zero(page);
+    for(size_t i=0; i<len; i++) {
+        // HACK: Access every address (*u16++ would not work)
+        *((u16*)off) = 0;
+        off++;
+    }
+    map_page_zero(0);
+}
+
+int phys_page_to_load(struct proc* proc, u16 vaddr, int prog) {
+    int virt_page = (vaddr >> 12);
+
+    if(prog) {
+        // this is program virtual LOAD address. LSB of virt_page is used as MSB of lower addr part after disabling
+        // programming mode. We are writing exec page mapping, where whole address is shifted >> 1 (including page).
+        // 0xxx z*12 -> xxxz z*11 (h/l sel); HIGH/LOW word select is handled by caller which supplies load addr.
+        if (proc->prog_pages[virt_page/2] == 0xff)
+            proc->prog_pages[virt_page/2] = first_free_prog_page++;
+
+        // We shall return LOAD phys page, which is assigned phys page << 1 | MSB of normal address (which is shifted in LOAD to page section)
+        return (proc->prog_pages[virt_page / 2] << 1) | (virt_page & 1);
+    } else {
+        // load to ram mem is the same as read
+        if (proc->mem_pages[virt_page] == 0xff)
+            proc->mem_pages[virt_page] = first_free_page++;
+
+        return proc->mem_pages[virt_page];
+    }
 }
 
 void load_ph(int fd, char* ph, struct proc* proc) {
-    first_free_page = 0;
     for(size_t i=0; i<GET_U16(buff, EH_OFF_PHNUM); i++) {
         vfs_read(fd, ph, PH_SIZE);
         size_t next_ph = vfs_seek(fd, 0, SEEK_CUR);
 
         if(GET_U16(ph, PH_OFF_TYPE) == PT_LOAD) {
             u16 flags = GET_U16(ph, PH_OFF_FLAGS);
-            int mem_div = (flags&PF_X ? 2 : 4);
+            int prog = (flags & PF_X) > 0;
+            int mem_div = (prog ? 4 : 2);
 
             vfs_seek(fd, GET_U16(ph, PH_OFF_OFFSET), SEEK_SET);
             size_t mem_size = GET_U16(ph, PH_OFF_FILESZ)/mem_div;
-            mem_size = 0x4000;
+            size_t zero_mem_size = GET_U16(ph, PH_OFF_MEMSZ)/mem_div;
 
             size_t vaddr = GET_U16(ph, PH_OFF_VADDR);
-            vaddr = 0x1af2;
-            size_t end_addr = vaddr+mem_size;
+            size_t mem_start = vaddr;
+            size_t end_addr = vaddr+mem_size-1;
             int pages = (mem_size+PAGE_SIZE-1)/PAGE_SIZE;
 
             if(flags&PF_X) {
+                // if we are using program page load, we need to supply LOAD address. See comment in phys_page_to_load()
                 vaddr *= 2;
                 end_addr *= 2;
-            } else {
-                continue;
             }
-            log("lph eva %x lva %x pg %x ea %x", vaddr/2, vaddr, pages, end_addr);
+
             // Load single pages
-            load_to_page(fd, vaddr % PAGE_SIZE, MIN(0x0fff, end_addr%PAGE_SIZE), page_to_load(proc, vaddr));
-            vaddr += PAGE_SIZE-(GET_U16(ph, PH_OFF_VADDR)%PAGE_SIZE);
+            load_to_page(fd, vaddr % PAGE_SIZE, MIN(PAGE_SIZE-1, end_addr), phys_page_to_load(proc, vaddr, prog), prog);
+            vaddr += MIN(PAGE_SIZE-(GET_U16(ph, PH_OFF_VADDR)%PAGE_SIZE), end_addr+1);
             for(int j=0; j<pages-2; j++) {
-                load_to_page(fd, 0x000, 0x0fff, page_to_load(proc, vaddr));
-                vaddr += 0x1000;
+                load_to_page(fd, 0x000, PAGE_SIZE-1, phys_page_to_load(proc, vaddr, prog), prog);
+                vaddr += PAGE_SIZE;
             }
-            if(pages > 1)
-                load_to_page(fd, 0x000, end_addr % PAGE_SIZE, page_to_load(proc, vaddr));
+            if(pages > 1) {
+                load_to_page(fd, 0x000, end_addr % PAGE_SIZE, phys_page_to_load(proc, vaddr, prog), prog);
+                vaddr += (end_addr%PAGE_SIZE)+1;
+            }
+
+            if(!prog && mem_size < zero_mem_size) {
+                while (vaddr < mem_start+zero_mem_size) {
+                    size_t size = MIN((PAGE_SIZE-vaddr), mem_start+zero_mem_size-vaddr);
+                    zero_page(vaddr%PAGE_SIZE, size, phys_page_to_load(proc, vaddr, prog));
+                    vaddr += size;
+                }
+            }
+
         }
         vfs_seek(fd, next_ph, SEEK_SET);
     }
@@ -168,7 +200,7 @@ int elf_load(int fd) {
     }
 
     if (GET_U16(buff, EH_OFF_MACHINE) != EM_PCPU) {
-        log("ELF: Invalid target machine");
+        log("ELF: Invalid target machine (expected pcpu:0x888)");
         return -1;
     }
 
@@ -176,8 +208,14 @@ int elf_load(int fd) {
 
     // Load program
     struct proc* proc = sched_init_user_thread();
+
     proc->pc = GET_U16(buff, EH_OFF_ENTRY);
+    proc->pc = 0;
+
     vfs_seek(fd, phoff, SEEK_SET);
     load_ph(fd, ph_buff, proc);
+
+    proc->state = PROC_STATE_RUNNABLE;
+
     return 0;
 }
