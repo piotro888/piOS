@@ -5,8 +5,8 @@
 
 #include <proc/proc.h>
 
-void load_into_userspace_program(int page, int* data);
-void load_into_userspace(int page, int* data);
+void load_into_userspace_program(int page, u16* data, size_t size, size_t offset);
+void load_into_userspace(int page, u16* data, size_t size, size_t offset);
 void switch_to_userspace(struct proc* p);
 
 void enable_paging();

@@ -1,17 +1,22 @@
 #include "virtual.h"
 
-#include <libk//log.h>
+#include <libk/assert.h>
 
-extern void set_ram_mem(int* data, int page);
-void load_into_userspace(int page, int* data) {
-    set_ram_mem(data, page);
+extern void set_ram_mem(u16* data, int page, size_t size, size_t offset);
+void load_into_userspace(int page, u16* data, size_t size, size_t offset) {
+    ASSERT(offset+size <= PAGE_SIZE);
+    set_ram_mem(data, page, size, offset);
     asm volatile ("":::"r0","r1","r2","r3","r4");
 }
 
-extern void set_program_mem(int* data, int page);
-void load_into_userspace_program(int page, int* data) {
-    set_program_mem(data, page*2);
-     asm volatile ("":::"r0","r1","r2","r3","r4");
+extern void set_program_mem(u16* data, int page, size_t size, size_t offset);
+void load_into_userspace_program(int page, u16* data, size_t size, size_t offset) {
+    ASSERT(offset+size <= PAGE_SIZE);
+
+    // addr: 4b page 11b prog_address 1b h/l. page size is still 0x1000*16b
+    // exec: 4b page 12b prog_addr (but 12th of prg_addr is LSB of page while programming). Page must be <<1 while programming | 12th bit (see elf.c)
+    set_program_mem(data, page, size, offset);
+    asm volatile ("":::"r0","r1","r2","r3","r4");
 }
 
 extern void set_mapping_from_struct(int* pages);

@@ -2,12 +2,18 @@
 ; 0001000E
 .romd
 
+; r0-data* r1-page r2-size r3-off
 set_program_mem:
-    srl r4, 1 ; save flags
+    ; save pc on stack
+    sto r6, r7, 0
+    ; NOTE: We can't store flags on stack, because flags include paging, which we need to access stack to recover
+    srl r4, 1
+    mov r6, r4 ; save old flags
 
     srs r1, 0x10 ; set page zero mapping
 
-    ldi r3, 0 ; loop counter
+    mov r4, r2
+    ; r3 - loop counter
     cl_set_program_mem_loop:
         ldo r2, r0, 0 ; load pointer - we need to access memory before setting memory override
         ldi r1, 0b1011 ; flags: SUP, IMO - InstructionMemoryOverride no memory access allowed later, and MEMory PAGing
@@ -17,38 +23,45 @@ set_program_mem:
         srs r1, 1
         adi r0, r0, 2 ; increment pointer (gcc bug +2)
         adi r3, r3, 1 ; increment loop counter
-        cmi r3, 0x1000 ; page size
-        jne cl_set_program_mem_loop
+        cmp r3, r4 ; end addr
+        jlt cl_set_program_mem_loop
 
-    srs r4, 1
+    srs r6, 1  ; recover old flags
 
     ldi r1, 0
     srs r1, 0x10 ; reset page zero mapping
 
+    ldo r6, r7, 0 ; recover pc from stack
     srs r6, 0 ; return
 
+; r0-data* r1-page r2-size r3-off
 set_ram_mem:
+    sto r6, r7, 0 ; save pc on stack
     srl r4, 1
+    mov r6, r4 ; save old flags
     ori r4, r4, 0x8 ; same as before but do not set instr override
     srs r4, 1
 
     srs r1, 0x10 ; set page zero mapping
 
-    ldi r3, 0 ; loop counter
+    mov r1, r2
+
+   ; r3 - loop counter
     cl_set_ram_mem_loop:
         ldo r2, r0, 0 ; this is fine - buffer not in page0
         sto r2, r3, 0 ; store in new block pointer from r0
         adi r0, r0, 2 ; increment pointer (gcc bug +2)
         adi r3, r3, 1 ; increment loop counter
-        cmi r3, 0x1000 ; page size
-        jne cl_set_ram_mem_loop
+        cmp r3, r1 ; end addr
+        jlt cl_set_ram_mem_loop
 
-    ani r4, r4, 0xf7 ; disable MEMPAG
-    srs r4, 1
+    ; load old flags
+    srs r6, 1
 
     ldi r1, 0
     srs r1, 0x10 ; reset page zero mapping
 
+    ldo r6, r7, 0 ; recover pc from stack
     srs r6, 0 ; return
 
 ; set virtual page mapping to values in struct
