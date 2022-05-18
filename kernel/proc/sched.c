@@ -21,6 +21,7 @@ int pid_now = 0;
 
 // FIXME: Request pages from virtual memory manager
 int first_free_page = 17;
+int first_free_prog_page = 17;
 
 extern void __attribute__((noreturn)) idle_task();
 struct proc idle_struct;
@@ -119,4 +120,39 @@ int make_kernel_thread(char* name, void __attribute__((noreturn)) (*entry)()) {
     list_append(&proc_list, p);
 
     return p->pid;
+}
+
+struct proc* sched_init_user_thread() {
+    struct proc* p = kmalloc(sizeof(struct proc));
+
+    p->pid = ++pid_now;
+    p->type = PROC_TYPE_USER;
+
+    for(int i=0; i<8; i++)
+        p->regs[i] = 0;
+    p->arith_flags = 0;
+    p->pc = 0;
+
+    // set invalid virtual pages
+    for(int i=0; i<16; i++) {
+        p->mem_pages[i] = 0xff;
+        p->prog_pages[i] = 0xff;
+    }
+
+    // allocate stack page
+    p->mem_pages[15] = first_free_page++;
+    // sp & fp
+    p->regs[7] = 0xffff;
+    p->regs[5] = 0xffff;
+
+    // initialize fd table as free
+    for(int i=0; i<PROC_MAX_FILES; i++)
+        p->open_files[i].vnode = NULL;
+    p->sema_blocked = NULL;
+
+    p->state = PROC_STATE_UNLOADED;
+    p->name[0] = '\0';
+
+    list_append(&proc_list, p);
+    return p;
 }
