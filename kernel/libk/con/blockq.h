@@ -16,5 +16,6 @@ struct blockq {
 void blockq_init(struct blockq* s, size_t size, size_t base_size);
 void blockq_push(struct blockq* s, void* buff);
 void blockq_pop(struct blockq* s, void* buff);
+void blockq_push_nonblock(struct blockq* s, void* buff);
 
 #endif

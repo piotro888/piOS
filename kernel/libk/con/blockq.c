@@ -45,3 +45,10 @@ void blockq_push(struct blockq* s, void* buff) {
 
     semaphore_up(&s->not_empty);
 }
+
+void blockq_push_nonblock(struct blockq* s, void* buff) {
+    ASSERT(s->size < s->max_size);
+    ringbuff_write(&s->rbuff, buff, s->base_size);
+    s->size++;
+    semaphore_up(&s->not_empty);
+}
