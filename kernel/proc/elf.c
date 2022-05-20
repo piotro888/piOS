@@ -76,6 +76,7 @@ char ph_buff[PH_SIZE];
 
 void load_to_page(int fd, size_t off, size_t end_addr, int page, int prog) {
     ASSERT(end_addr < PAGE_SIZE);
+
     size_t m_addr = off;
     while (m_addr <= end_addr) {
         size_t read = vfs_read(fd, load_buff, MIN(LOAD_BUFF, (end_addr - m_addr + (prog ? 2 : 1)) * 2));
@@ -152,16 +153,19 @@ void load_ph(int fd, char* ph, struct proc* proc) {
                 end_addr *= 2;
             }
 
-            // Load single pages
-            load_to_page(fd, vaddr % PAGE_SIZE, MIN(PAGE_SIZE-1, end_addr), phys_page_to_load(proc, vaddr, prog), prog);
-            vaddr += MIN(PAGE_SIZE-(GET_U16(ph, PH_OFF_VADDR)%PAGE_SIZE), end_addr+1);
-            for(int j=0; j<pages-2; j++) {
-                load_to_page(fd, 0x000, PAGE_SIZE-1, phys_page_to_load(proc, vaddr, prog), prog);
-                vaddr += PAGE_SIZE;
-            }
-            if(pages > 1) {
-                load_to_page(fd, 0x000, end_addr % PAGE_SIZE, phys_page_to_load(proc, vaddr, prog), prog);
-                vaddr += (end_addr%PAGE_SIZE)+1;
+            if(mem_size) {
+                // Load single pages
+                load_to_page(fd, vaddr % PAGE_SIZE, MIN(PAGE_SIZE - 1, end_addr), phys_page_to_load(proc, vaddr, prog),
+                             prog);
+                vaddr += MIN(PAGE_SIZE - (GET_U16(ph, PH_OFF_VADDR) % PAGE_SIZE), end_addr + 1);
+                for (int j = 0; j < pages - 2; j++) {
+                    load_to_page(fd, 0x000, PAGE_SIZE - 1, phys_page_to_load(proc, vaddr, prog), prog);
+                    vaddr += PAGE_SIZE;
+                }
+                if (pages > 1) {
+                    load_to_page(fd, 0x000, end_addr % PAGE_SIZE, phys_page_to_load(proc, vaddr, prog), prog);
+                    vaddr += (end_addr % PAGE_SIZE) + 1;
+                }
             }
 
             if(!prog && mem_size < zero_mem_size) {
@@ -210,7 +214,6 @@ int elf_load(int fd) {
     struct proc* proc = sched_init_user_thread();
 
     proc->pc = GET_U16(buff, EH_OFF_ENTRY);
-    proc->pc = 0;
 
     vfs_seek(fd, phoff, SEEK_SET);
     load_ph(fd, ph_buff, proc);
