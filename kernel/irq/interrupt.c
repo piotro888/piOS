@@ -9,6 +9,7 @@
 #include <proc/proc.h>
 #include <proc/virtual.h>
 #include <irq/timer.h>
+#include <sys/sysd.h>
 
 /* Interrupt handler called from irq.s */
 __attribute__((used))
@@ -26,7 +27,8 @@ void interrupt(const char* state) {
     int syscall_flag = (*(int*)(state+16-13)) & 0x8;
 
     if(syscall_flag && (current_proc->type == PROC_TYPE_USER || current_proc->type == PROC_TYPE_PRIV)) {
-        log_irq("syscall: %d", current_proc->regs[0]);
+        log_irq("syscall: r0 %d pc 0x%x", current_proc->regs[0], current_proc->pc);
+        sysd_submit(current_proc->pid);
         should_switch_thread = 1;
     }
 

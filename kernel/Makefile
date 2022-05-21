@@ -35,8 +35,10 @@ AOBJS=\
 	libk/con/semaphore.ao\
 	libk/con/spinlock.ao\
 	proc/cswitch.ao\
+	proc/elf.ao\
 	proc/sched.ao\
-	proc/virtual.ao
+	proc/virtual.ao\
+	sys/sysd.ao
 
 .PHONY: all clean
 
@@ -69,4 +71,4 @@ emu: kernel.hex kernel.pbl
 	$(PEMU) build/kernel.hex build/kernel.pbl
 
 pce: kernel.pbl
-	$(PCE) build/kernel.pbl build/kernel.pbl.mm ../test.tar
+	$(PCE) build/kernel.pbl build/kernel.pbl.mm ../test.tar --run

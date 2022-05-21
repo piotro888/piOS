@@ -12,6 +12,7 @@
 #include <irq/timer.h>
 #include <proc/sched.h>
 #include <proc/virtual.h>
+#include <sys/sysd.h>
 
 #include <libk/kmalloc.h>
 #include <libk/kprintf.h>
@@ -64,6 +65,7 @@ void __attribute__((noreturn)) init_stage1() {
     tty_mnt_vfs();
 
     log("registering system threads");
+    sysd_init();
     sd_register_thread();
 
     log("mounting SD card TAR filesystem");
