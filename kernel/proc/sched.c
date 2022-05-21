@@ -156,3 +156,12 @@ struct proc* sched_init_user_thread() {
     list_append(&proc_list, p);
     return p;
 }
+
+struct proc* proc_by_pid(int pid) {
+    list_foreach(&proc_list) {
+        struct proc* p = LIST_FOREACH_VAL(struct proc*);
+        if(p->pid == pid)
+            return p;
+    }
+    return NULL;
+}

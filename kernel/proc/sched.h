@@ -15,6 +15,8 @@ void sched_pick_next();
 int make_kernel_thread(char* name, void __attribute__((noreturn)) (*entry)());
 struct proc* sched_init_user_thread();
 
+struct proc* proc_by_pid(int pid);
+
 #define YIELD() asm volatile ("sys")
 
 #endif
