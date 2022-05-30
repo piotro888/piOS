@@ -32,6 +32,7 @@ struct proc {
 #define PROC_STATE_UNLOADED 0
 #define PROC_STATE_RUNNABLE 1
 #define PROC_STATE_BLOCKED 2
+#define PROC_STATE_SYSCALL 3
 
 // init process skips virtual memory (spins in kernel loop and handles interrupts, not selected by scheduler)
 #define PROC_TYPE_INIT 0
