@@ -199,7 +199,7 @@ void tty_puts(const char* str) {
 
 int tty_fs_get_fid(char* path) { return 0; }
 
-size_t tty_fs_read(struct fd_info* file, char* buff, size_t len) {
+ssize_t tty_fs_read(struct fd_info* file, void* buff, size_t len) {
     spinlock_lock(&read_sl);
     while(ringbuff_length(&read_rb) < 1) {
         spinlock_unlock(&read_sl);
@@ -216,12 +216,12 @@ size_t tty_fs_read(struct fd_info* file, char* buff, size_t len) {
     return rl;
 }
 
-size_t tty_fs_write(struct fd_info* file, char* buff, size_t len) {
+ssize_t tty_fs_write(struct fd_info* file, void* buff, size_t len) {
     spinlock_lock(&write_sl);
     size_t write_len = ringbuff_write(&write_rb, buff, len);
     while (write_len < len) {
         semaphore_down(&write_not_full);
-        write_len += ringbuff_write(&write_rb, buff+write_len, len-write_len);
+        write_len += ringbuff_write(&write_rb, (char*)buff+write_len, len-write_len);
     }
 
     spinlock_unlock(&write_sl);

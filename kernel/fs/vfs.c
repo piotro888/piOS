@@ -70,29 +70,33 @@ int vfs_close(int fd) {
     return 0;
 }
 
-size_t vfs_read(int fd, void* buff, size_t len) {
+ssize_t vfs_read(int fd, void* buff, size_t len) {
     if(current_proc->open_files[fd].vnode == NULL)
-        return (EBADFD == 0);
+        return -EBADFD;
 
     return (*current_proc->open_files[fd].vnode->handles->read)(&current_proc->open_files[fd], buff, len);
 }
 
-size_t vfs_write(int fd, void* buff, size_t len) {
+ssize_t vfs_write(int fd, void* buff, size_t len) {
     if(current_proc->open_files[fd].vnode == NULL)
-        return (EBADFD == 0);
+        return -EBADFD;
 
     return (*current_proc->open_files[fd].vnode->handles->write)(&current_proc->open_files[fd], buff, len);
 }
 
-size_t vfs_seek(int fd, size_t off, int whence) {
+ssize_t vfs_seek(int fd, ssize_t off, int whence) {
     if(current_proc->open_files[fd].vnode == NULL)
         return (EBADFD == 0);
 
     switch (whence) {
         case SEEK_SET:
+            if(off < 0)
+                return -EINVAL;
             current_proc->open_files[fd].seek = off;
             return off;
         case SEEK_CUR:
+            if(current_proc->open_files[fd].seek + off < 0)
+                return -EINVAL;
             current_proc->open_files[fd].seek += off;
             return current_proc->open_files[fd].seek;
         default: // FIXME: SIZE_END

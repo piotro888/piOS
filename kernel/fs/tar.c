@@ -44,7 +44,7 @@ int tar_get_fid(char* path) {
     return file->sector; // simply return sector number as unique file number
 }
 
-size_t tar_read(struct fd_info* file, void* buff, size_t len) {
+ssize_t tar_read(struct fd_info* file, void* buff, size_t len) {
     sd_read_adapter(sector_buff, file->inode);
 
     struct tar_t* header = sector_buff;
@@ -100,17 +100,17 @@ void tar_make_dir_tree() {
         file->size = size;
         file->type = FS_TYPE_FILE; // FIXME
         file->sector = sector;
-        
+
         dir_tree_add_path(&tar_dir_tree, file);
-        
+
         int sectors_skip = (size+SECTOR_SIZE-1)/SECTOR_SIZE + 1;
         sector += sectors_skip;
     }
 }
 
-size_t tar_write(struct fd_info* file, void* buff, size_t len) {
+ssize_t tar_write(struct fd_info* file, void* buff, size_t len) {
     (void) file, (void) buff, (void) len;
-    return 0; // or maybe we should return signed int -1 as error?
+    return -ENOSUP;
 }
 
 void tar_mount_sd() {
