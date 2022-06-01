@@ -2,7 +2,7 @@
 ; 0001000E
 .romd
 
-; r0-data* r1-page r2-size r3-off
+; r0-data* r1-page r2-end_addr r3-off
 set_program_mem:
     ; save pc on stack
     sto r6, r7, 0
@@ -24,7 +24,7 @@ set_program_mem:
         adi r0, r0, 2 ; increment pointer (gcc bug +2)
         adi r3, r3, 1 ; increment loop counter
         cmp r3, r4 ; end addr
-        jlt cl_set_program_mem_loop
+        jle cl_set_program_mem_loop
 
     srs r6, 1  ; recover old flags
 
@@ -34,7 +34,7 @@ set_program_mem:
     ldo r6, r7, 0 ; recover pc from stack
     srs r6, 0 ; return
 
-; r0-data* r1-page r2-size r3-off
+; r0-data* r1-page r2-end_addr r3-off
 set_ram_mem:
     sto r6, r7, 0 ; save pc on stack
     srl r4, 1
@@ -53,7 +53,7 @@ set_ram_mem:
         adi r0, r0, 2 ; increment pointer (gcc bug +2)
         adi r3, r3, 1 ; increment loop counter
         cmp r3, r1 ; end addr
-        jlt cl_set_ram_mem_loop
+        jle cl_set_ram_mem_loop
 
     ; load old flags
     srs r6, 1
