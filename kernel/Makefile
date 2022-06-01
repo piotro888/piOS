@@ -38,7 +38,8 @@ AOBJS=\
 	proc/elf.ao\
 	proc/sched.ao\
 	proc/virtual.ao\
-	sys/sysd.ao
+	sys/sysd.ao\
+	sys/sysres.ao
 
 .PHONY: all clean
 

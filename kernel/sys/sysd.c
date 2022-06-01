@@ -3,6 +3,7 @@
 #include <driver/tty.h>
 #include <proc/sched.h>
 #include <proc/virtual.h>
+#include <sys/sysres.h>
 
 #include <libk/con/blockq.h>
 #include <libk/log.h>
@@ -10,7 +11,7 @@
 
 struct blockq syscall_q;
 
-void process_syscall(struct proc* proc) {
+int process_syscall(struct proc* proc) {
     int sysno = proc->regs[0];
     switch (sysno) {
         case SYS_DUMP: {
@@ -40,10 +41,18 @@ void process_syscall(struct proc* proc) {
             break;
         }
         case SYS_READ: {
-            // FIXME: Make preliminary check here and if it is blocking, return to wait state. This will prevent most obvious dispatcher blocking, in other cases it should be short term
             void* kcbuff = kmalloc(sizeof proc->regs[3]);
-            size_t r = vfs_read(proc->regs[1], kcbuff, proc->regs[3]);
-            memcpy_to_userspace(proc, proc->regs[2], kcbuff, proc->regs[3]);
+            ssize_t r = vfs_read_nonblock(proc->regs[1], kcbuff, proc->regs[3]);
+            if(r == -EWOULDBLOCK) { // LATER_FIXME: If ioctl nonblock is set return it
+                kfree(kcbuff);
+                sysres_submit_read(proc);
+                return 0;
+            } else if(r == -ENOSUP) { // fallback
+                r = vfs_read(proc->regs[1], kcbuff, proc->regs[3]);
+            }
+
+            if(r > 0)
+                memcpy_to_userspace(proc, proc->regs[2], kcbuff, r);
             kfree(kcbuff);
             proc->regs[0] = r;
             break;
@@ -51,7 +60,15 @@ void process_syscall(struct proc* proc) {
         case SYS_WRITE: {
             void* kcbuff = kmalloc(sizeof proc->regs[3]);
             memcpy_from_userspace(kcbuff, proc, proc->regs[2], proc->regs[3]);
-            size_t r = vfs_write(proc->regs[1], kcbuff, proc->regs[3]);
+            ssize_t r = vfs_write_nonblock(proc->regs[1], kcbuff, proc->regs[3]);
+            if(r == -EWOULDBLOCK) { // LATER_FIXME: If ioctl nonblock is set return it
+                kfree(kcbuff);
+                sysres_submit_write(proc);
+                return 0;
+            } else if(r == -ENOSUP) { // fallback
+                r = vfs_write(proc->regs[1], kcbuff, proc->regs[3]);
+            }
+
             kfree(kcbuff);
             proc->regs[0] = r;
             break;
@@ -61,6 +78,7 @@ void process_syscall(struct proc* proc) {
             break;
         }
     }
+    return 1;
 }
 
 __attribute__((noreturn)) void syscall_dispatcher() {
@@ -68,9 +86,12 @@ __attribute__((noreturn)) void syscall_dispatcher() {
         int proc_pid;
         blockq_pop(&syscall_q, &proc_pid);
         struct proc* proc = proc_by_pid(proc_pid);
-        process_syscall(proc);
-        log("PID: %d resuming from syscall (ret %d)", proc_pid, proc->regs[0]);
-        proc->state = PROC_STATE_RUNNABLE;
+
+        int sys_ret = process_syscall(proc);
+        if(sys_ret) {
+            log("PID: %d resuming from syscall (ret %d)", proc_pid, proc->regs[0]);
+            proc->state = PROC_STATE_RUNNABLE;
+        }
     }
 }
 
@@ -82,6 +103,11 @@ int sysd_submit(int pid) {
 
     blockq_push_nonblock(&syscall_q, &pid);
     current_proc->state = PROC_STATE_SYSCALL;
+    return 0;
+}
+
+int sysd_resubmit(int pid) {
+    blockq_push(&syscall_q, &pid);
     return 0;
 }
 

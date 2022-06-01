@@ -2,6 +2,7 @@
 #define SYS_SYSD_H
 
 int sysd_submit(int pid);
+int sysd_resubmit(int pid);
 
 void sysd_init();
 
