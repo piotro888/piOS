@@ -28,6 +28,10 @@ struct vfs_reg {
 
     ssize_t (*read)(struct fd_info* file, void* buff, size_t len);
     ssize_t (*write)(struct fd_info* file, void* buff, size_t len);
+    /* If file operation would block, non-block version of operations should return EWOULDBLOCK and set internal flag to
+     * notify syscall reissuer when operation will be available (only if ioctl NONBLOCK is not set */
+    ssize_t (*read_nonblock)(struct fd_info* file, void* buff, size_t len);
+    ssize_t (*write_nonblock)(struct fd_info* file, void* buff, size_t len);
 };
 
 void vfs_init();
@@ -40,6 +44,9 @@ int vfs_close(int fd);
 
 ssize_t vfs_read (int fd, void* buff, size_t len);
 ssize_t vfs_write(int fd, void* buff, size_t len);
+
+ssize_t vfs_read_nonblock (int fd, void* buff, size_t len);
+ssize_t vfs_write_nonblock(int fd, void* buff, size_t len);
 
 ssize_t vfs_seek(int fd, ssize_t off, int whence);
 #define SEEK_SET 0

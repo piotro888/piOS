@@ -118,7 +118,9 @@ void tar_mount_sd() {
     const struct vfs_reg handles = {
             tar_get_fid,
             tar_read,
-            tar_write
+            tar_write,
+            NULL,
+            NULL,
     };
 
     vfs_mount("/sd/", &handles);

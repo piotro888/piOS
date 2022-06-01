@@ -5,8 +5,10 @@
 #include <libk/con/semaphore.h>
 #include <libk/con/spinlock.h>
 #include <libk/math.h>
+#include <libk/assert.h>
 #include <fs/vfs.h>
 #include <proc/sched.h>
+#include <sys/sysres.h>
 
 static int tty_cursor_col, tty_cursor_row;
 
@@ -24,6 +26,8 @@ static struct ringbuff write_rb;
 static struct semaphore write_data_signal, write_not_full;
 static struct spinlock write_sl;
 
+static int read_notify = 0, write_notify = 0;
+
 #define IS_PRINTABLE(x) ((x) >= 32 && (x) <= 126)
 
 void tty_new_line() {
@@ -38,6 +42,10 @@ void tty_submit_line_buff() {
     ringbuff_write(&read_rb, line_buff, line_buff_len);
     line_buff_len = 0;
     semaphore_binary_up(&read_data_signal);
+    if(read_notify) {
+        read_notify = 0;
+        sysres_notify();
+    }
 }
 
 void tty_linebuff_erase() {
@@ -64,6 +72,7 @@ void linebuff_putc(char c) {
 }
 
 // TODO: Implement reprint (see stty rprnt) on ctrl-r? & VKILL
+// FIXME: FLUSH TTY ON panic
 /* NOTE: Keyboard arrows are not handled in canon mode tty in linux and cursor l/r don't change  overwrite
  * position in line buffer. Maybe we could implement this in some mode (move cursor and lb pos)? */
 
@@ -209,9 +218,35 @@ ssize_t tty_fs_read(struct fd_info* file, void* buff, size_t len) {
 
     size_t rl = ringbuff_read(&read_rb, buff, len);
 
-    if(ringbuff_length(&read_rb))
+    if(ringbuff_length(&read_rb)) {
         semaphore_binary_up(&read_data_signal);
+        if(read_notify)
+            sysres_notify();
+    }
 
+    spinlock_unlock(&read_sl);
+    return rl;
+}
+
+ssize_t tty_fs_read_nonblock(struct fd_info* file, void* buff, size_t len) {
+    spinlock_lock(&read_sl);
+    if(ringbuff_length(&read_rb) < 1) {
+        read_notify = 1; // FIXME_LATER: set if !ioctl
+        spinlock_unlock(&read_sl);
+        return -EWOULDBLOCK;
+    }
+    if(!len)
+        return 0;
+
+    size_t rl = ringbuff_read(&read_rb, buff, len);
+
+    if(ringbuff_length(&read_rb)) {
+        semaphore_binary_up(&read_data_signal);
+        if(read_notify) {
+            read_notify = 0;
+            sysres_notify();
+        }
+    }
     spinlock_unlock(&read_sl);
     return rl;
 }
@@ -229,6 +264,21 @@ ssize_t tty_fs_write(struct fd_info* file, void* buff, size_t len) {
     return write_len;
 }
 
+ssize_t tty_fs_write_nonblock(struct fd_info* file, void* buff, size_t len) {
+    spinlock_lock(&write_sl);
+    if(ringbuff_length(&write_rb)+len > TTY_BUFF_SIZE) {
+        write_notify = 1;
+        spinlock_unlock(&write_sl);
+        return -EWOULDBLOCK;
+    }
+    size_t write_len = ringbuff_write(&write_rb, buff, len);
+    ASSERT(write_len == len);
+
+    spinlock_unlock(&write_sl);
+    semaphore_binary_up(&write_data_signal);
+    return write_len;
+}
+
 void __attribute__((noreturn)) tty_driver_thread() {
     /* submits tty input in order from fs buffer */
     char buff[TTY_SUBMIT_BUFF];
@@ -239,6 +289,10 @@ void __attribute__((noreturn)) tty_driver_thread() {
 
         size_t read_len = ringbuff_read(&write_rb, buff, TTY_SUBMIT_BUFF);
         semaphore_binary_up(&write_not_full);
+        if(write_notify) {
+            write_notify = 0;
+            sysres_notify();
+        }
 
         for(size_t i=0; i<read_len; i++)
             tty_putc(buff[i]);
@@ -253,7 +307,9 @@ void tty_mnt_vfs() {
     const struct vfs_reg reg = {
             tty_fs_get_fid,
             tty_fs_read,
-            tty_fs_write
+            tty_fs_write,
+            tty_fs_read_nonblock,
+            tty_fs_write_nonblock,
     };
     vfs_mount("/dev/tty", &reg);
 }

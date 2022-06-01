@@ -31,6 +31,8 @@ int vfs_mount(char* path, const struct vfs_reg* handles) {
     node->handles->get_fid = handles->get_fid;
     node->handles->read = handles->read;
     node->handles->write = handles->write;
+    node->handles->read_nonblock = handles->read_nonblock;
+    node->handles->write_nonblock = handles->write_nonblock;
 
     node->vid = ++vfs_id;
 
@@ -71,22 +73,40 @@ int vfs_close(int fd) {
 }
 
 ssize_t vfs_read(int fd, void* buff, size_t len) {
-    if(current_proc->open_files[fd].vnode == NULL)
+    if(fd > PROC_MAX_FILES || fd < 0 || current_proc->open_files[fd].vnode == NULL)
         return -EBADFD;
 
     return (*current_proc->open_files[fd].vnode->handles->read)(&current_proc->open_files[fd], buff, len);
 }
 
 ssize_t vfs_write(int fd, void* buff, size_t len) {
-    if(current_proc->open_files[fd].vnode == NULL)
+    if(fd > PROC_MAX_FILES || fd < 0 || current_proc->open_files[fd].vnode == NULL)
         return -EBADFD;
 
     return (*current_proc->open_files[fd].vnode->handles->write)(&current_proc->open_files[fd], buff, len);
 }
 
+ssize_t vfs_read_nonblock(int fd, void* buff, size_t len) {
+    if(fd > PROC_MAX_FILES || fd < 0 || current_proc->open_files[fd].vnode == NULL)
+        return -EBADFD;
+    if(!current_proc->open_files[fd].vnode->handles->read_nonblock)
+        return -ENOSUP;
+
+    return (*current_proc->open_files[fd].vnode->handles->read_nonblock)(&current_proc->open_files[fd], buff, len);
+}
+
+ssize_t vfs_write_nonblock(int fd, void* buff, size_t len) {
+    if(fd > PROC_MAX_FILES || fd < 0 || current_proc->open_files[fd].vnode == NULL)
+        return -EBADFD;
+    if(!current_proc->open_files[fd].vnode->handles->write_nonblock)
+        return -ENOSUP;
+
+    return (*current_proc->open_files[fd].vnode->handles->write_nonblock)(&current_proc->open_files[fd], buff, len);
+}
+
 ssize_t vfs_seek(int fd, ssize_t off, int whence) {
-    if(current_proc->open_files[fd].vnode == NULL)
-        return (EBADFD == 0);
+    if(fd > PROC_MAX_FILES || fd < 0 || current_proc->open_files[fd].vnode == NULL)
+        return -EBADFD;
 
     switch (whence) {
         case SEEK_SET:
