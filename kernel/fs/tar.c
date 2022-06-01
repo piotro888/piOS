@@ -65,6 +65,7 @@ ssize_t tar_read(struct fd_info* file, void* buff, size_t len) {
     for(size_t i=0; i<len; i++) {
         if(pos++ == 512) {
             sd_read_adapter(sector_buff, ++sector);
+            data = sector_buff;
             pos = 0;
         }
         *buffc++ = *data++;
