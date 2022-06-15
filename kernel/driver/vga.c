@@ -1,9 +1,9 @@
 #include "vga.h"
 #include <libk/types.h>
 
-#define VGA_FRAMEBUFF_ADDR 0x1000
-#define VGA_SETTINGS_ADDR 0x4000
-#define VGA_FAST_SCROLL_ADDR 0x4001
+#define VGA_FRAMEBUFF_ADDR 0x0200
+#define VGA_SETTINGS_ADDR 0x4d00
+#define VGA_FAST_SCROLL_ADDR 0x4d02
 
 #define VGA_TEXT_106_48_MODE 1
 
@@ -14,7 +14,7 @@ static int vga_scroll_begin;
 
 void vga_put_char_at(char c, int row, int col) {
     u16 char_value = (u16) c | (vga_text_color<<8);
-    u16* vga_char_addr = (u16*) (VGA_FRAMEBUFF_ADDR + (REAL_ROW(row)*VGA_TEXT_WIDTH) + col);
+    u16* vga_char_addr = (u16*) (VGA_FRAMEBUFF_ADDR + (REAL_ROW(row)*VGA_TEXT_WIDTH*2) + col*2);
     *vga_char_addr = char_value;
 }
 
@@ -24,18 +24,16 @@ void vga_set_color(u8 color) {
 }
 
 void vga_clear_line(int row) {
-    u16* vga_ptr = (u16*) (VGA_FRAMEBUFF_ADDR + (REAL_ROW(row)*VGA_TEXT_WIDTH));
+    u16* vga_ptr = (u16*) (VGA_FRAMEBUFF_ADDR + (REAL_ROW(row)*VGA_TEXT_WIDTH*2));
     for(int i=0; i<VGA_TEXT_WIDTH; i++) {
-        *vga_ptr = 0;
-        vga_ptr = (u16*)(((u16)vga_ptr)+1);
+        *vga_ptr++ = 0;
     }
 }
 
 void vga_clear_screen() {
     u16* vga_ptr = (u16*) VGA_FRAMEBUFF_ADDR;
     for(int i=0; i<VGA_TEXT_WIDTH*VGA_TEXT_HEIGHT; i++) {
-        *vga_ptr = 0;
-        vga_ptr = (u16*)(((u16)vga_ptr)+1);
+        *vga_ptr++ = 0;
     }
 }
 

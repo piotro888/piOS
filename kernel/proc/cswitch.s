@@ -157,7 +157,7 @@ c_switch:
     ldo r6, r0, 12
     ldo r7, r0, 14
 
-    ldi r0, 0x9 ; enable rom paging and priv mode. *remember about arithmetic flags!*; irq is set by iret
+    ldi r0, 0x19 ; enable rom paging, priv and stdmem mode. *remember about arithmetic flags!*; irq is set by iret
     srs r0, 1
 
     ldi r0, 0b10

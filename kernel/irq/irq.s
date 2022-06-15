@@ -8,30 +8,31 @@ interrupt_handler:
     ; save registers
     std r7, r7_temp_location ; store r7 to temporary location
     ; load trusted kernel stack pointer (but because of that no nested irqs allowed)
-    ldd r7, interrupt_sp
+    ldi r7, 0xeff0
     ; save registers to stack
-    sto r0, r7, -3
-    sto r1, r7, -4
-    sto r2, r7, -5
-    sto r3, r7, -6
-    sto r4, r7, -7
-    sto r5, r7, -8
-    sto r6, r7, -9
+    sto r0, r7, -4
+    sto r1, r7, -6
+    sto r2, r7, -8
+    sto r3, r7, -10
+    sto r4, r7, -12
+    sto r5, r7, -14
+    sto r6, r7, -16
     ; save r7
     ldd r0, r7_temp_location
-    sto r0, r7, -10
+    sto r0, r7, -18
 
     ; save interrupted program counter
     srl r0, 3
-    sto r0, r7, -11
+    sto r0, r7, -20
     ; save arithmetic flags (before any arith operation!)
     srl r0, 4
-    sto r0, r7, -12
-    ; load special flags usefull for kernel
+    sto r0, r7, -22
+    ; load special flags useful for kernel
     srl r0, 5
-    sto r0, r7 -13
-    ; adjust sp (+ space for passing argument)
-    adi r7, r7, -16
+    sto r0, r7, -24
+    ; adjust sp (+ space for passing argument!)
+    mov r5, r7
+    adi r7, r7, -28
     ; state saved
 
     ; pass pointer to state as argument
@@ -48,24 +49,24 @@ interrupt_handler:
     ; so this path will be only used in interrupts before scheduler
     ; in that case we could just resume from data stored on stack
 
-    adi r7, r7, 16
-    ldo r0, r7, -12
+    adi r7, r7, 28
+    ldo r0, r7, -22
     srs r0, 4 ; arithmetic flags
-    ldo r0, r7, -11
+    ldo r0, r7, -20
     srs r0, 3 ; return program counter
     ; restore registers
-    ldo r0, r7, -3
-    ldo r1, r7, -4
-    ldo r2, r7, -5
-    ldo r3, r7, -6
-    ldo r4, r7, -7
-    ldo r5, r7, -8
-    ldo r6, r7, -9
-    ldo r7, r7, -10 ; we leave `IRQ stack` now
+    ldo r0, r7, -4
+    ldo r1, r7, -6
+    ldo r2, r7, -8
+    ldo r3, r7, -10
+    ldo r4, r7, -12
+    ldo r5, r7, -14
+    ldo r6, r7, -16
+    ldo r7, r7, -18 ; we leave `IRQ stack` now
     ; return from interrupt
     irt
 
 .ramd
 ; stack pointer value loaded after interrupt in kernel
-.init interrupt_sp, 0xEFF0
-.global r7_temp_location, 1
+.init interrupt_sp, 0xEF, 0xF0 ;FIXME: just use kernel sp?
+.global r7_temp_location, 2

@@ -12,11 +12,15 @@ jmp interrupt_handler ; interrupt vector (0x1) -> irq/irq.s
 
 _startpoint:
 	; set up initial stack
-	ldi r7, 0xFFFF
-	ldi r5, 0xFFFF
+	ldi r7, 0xFFFE
+	ldi r5, 0xFFFE
 	
 	; mark r0
 	ldi r0, 0x314
+
+	; set cpu flags: privileged and compatibile memory access mode
+	ldi r0, 0x11
+	srs r0, 1
 	
 	; call _start in kstart.c
 	jal r6, _kstart	
@@ -28,5 +32,5 @@ _startpoint:
 		jmp ASMerr_loop
 
 .ramd
-.org 0x4c00
+.org 0x5000
 .romd

@@ -13,18 +13,18 @@
 
 /* Interrupt handler called from irq.s */
 __attribute__((used))
-void interrupt(const char* state) {
+void interrupt(const int state) {
     // save thread state
     for(int i=0; i<8; i++)
-        current_proc->regs[i] = *(int*)(state+16-(3+i));
-    current_proc->pc =          *(int*)(state+16-11);
-    current_proc->arith_flags = *(int*)(state+16-12);
+        current_proc->regs[i] = *(int*)(state+28-(4+2*i));
+    current_proc->pc =          *(int*)(state+28-20);
+    current_proc->arith_flags = *(int*)(state+28-22);
 
     // Thread should be only switched on syscall and timer interrupts
     int should_switch_thread = 0;
 
     // check for syscall flag in sr
-    int syscall_flag = (*(int*)(state+16-13)) & 0x8;
+    int syscall_flag = (*(int*)(state+28-24)) & 0x8;
 
     if(syscall_flag && (current_proc->type == PROC_TYPE_USER || current_proc->type == PROC_TYPE_PRIV)) {
         log_irq("syscall: r0 %d pc 0x%x", current_proc->regs[0], current_proc->pc);
@@ -42,9 +42,9 @@ void interrupt(const char* state) {
 
     // interrupt request and syscall could happen at same time
     // clear interrupt pending from controller and process interrupts
-    if(IRQ_PENDING(0)) {
-        IRQ_CLEAR(0);
-        uint8_t scancode = *((int*)3);
+    if(IRQ_PENDING(KEYBOARD_IRQ_ID)) {
+        IRQ_CLEAR(KEYBOARD_IRQ_ID);
+        u8 scancode = *(SCANCODE_ADDR);
         print_scancode(scancode);
     }
 

@@ -98,9 +98,9 @@ int make_kernel_thread(char* name, void __attribute__((noreturn)) (*entry)()) {
 
     // set stack page to new page (thread)
     p->mem_pages[15] = first_free_page++;
-    // setup sp and fp
-    p->regs[7] = 0xffff;
-    p->regs[5] = 0xffff;
+    // setup sp and fp (fe - aligned to 2)
+    p->regs[7] = 0xfffe;
+    p->regs[5] = 0xfffe;
 
     /* assembly BUG to resolve */
     p->pc = (int)entry+1;
@@ -142,8 +142,8 @@ struct proc* sched_init_user_thread() {
     // allocate stack page
     p->mem_pages[15] = first_free_page++;
     // sp & fp
-    p->regs[7] = 0xffff;
-    p->regs[5] = 0xffff;
+    p->regs[7] = 0xfffe;
+    p->regs[5] = 0xfffe;
 
     // initialize fd table as free
     for(int i=0; i<PROC_MAX_FILES; i++)

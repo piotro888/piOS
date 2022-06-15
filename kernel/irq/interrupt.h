@@ -6,7 +6,9 @@ void int_disable();
 int int_get();
 
 /* Macros for interrupt controller */
-#define IRQ_CLEAR(x)   (*(volatile u16*) 0x12) = (1<<(x))
-#define IRQ_PENDING(x) ((*(volatile u16*) 0x10) & (1<<(x)))
+#define IRQ_CLEAR_ADDR 0x24
+#define IRQ_STATUS_ADDR 0x20
+#define IRQ_CLEAR(x)   (*(volatile u16*) IRQ_CLEAR_ADDR) = (1<<(x))
+#define IRQ_PENDING(x) ((*(volatile u16*) IRQ_STATUS_ADDR) & (1<<(x)))
 
 #endif

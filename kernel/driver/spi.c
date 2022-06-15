@@ -1,7 +1,7 @@
 #include "spi.h"
 
-#define SPI_IO_ADDR (uint16_t*) 0x4
-#define SPI_CS_ADDR (uint16_t*) 0x5
+#define SPI_IO_ADDR (u16*) 0x8
+#define SPI_CS_ADDR (u16*) 0x10
 
 #define READY_BIT 0x8000
 
