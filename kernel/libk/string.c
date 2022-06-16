@@ -85,23 +85,10 @@ void strprefcpy(char* dst, char* src, size_t len) {
     *dst = '\0'; // always null terminate, but uses extra byte
 }
 
-// Copy u8* lower -> u8* lower
-void memcpy_8(u8* dst, u8* src, size_t size) {
+// Standard memcpy (now it works)
+void memcpy(void* dst, void* src, size_t size) {
+    char* _dst = dst;
+    char* _src = src;
     while(size--)
-        *dst++ = *src++;
-}
-
-// Exact copy of memory (u16, but without skips)
-void memcpy_full(void* dst, void* src, size_t size) {
-    u16 dsti = (u16) dst, srci= (u16) src;
-    while(size--) {
-        *((u16*)dsti) = *((u16*)srci);
-        dsti++; srci++;
-    }
-}
-
-// Copy like u16* layout (skips every 2nd word)
-void memcpy_16(u16* dst, u16* src, size_t size) {
-    while(size--)
-        *dst++ = *src++;
+        *_dst++ = *_src++;
 }

@@ -16,12 +16,12 @@ set_program_mem:
     ; r3 - loop counter
     cl_set_program_mem_loop:
         ldo r2, r0, 0 ; load pointer - we need to access memory before setting memory override
-        ldi r1, 0b1011 ; flags: SUP, IMO - InstructionMemoryOverride no memory access allowed later, and MEMory PAGing
+        ldi r1, 0b01011 ; flags: SUP, IMO - InstructionMemoryOverride no memory access allowed later, and MEMory PAGing
         srs r1, 1
         sto r2, r3, 0 ; store in new block pointer from r0
-        ldi r1, 0b1 ; diable IMO, MEMPG
+        ldi r1, 0b10001 ; diable IMO, MEMPG and enable MEMSTD
         srs r1, 1
-        adi r0, r0, 2 ; increment pointer (gcc bug +2)
+        adi r0, r0, 2 ; increment pointer (u16*)
         adi r3, r3, 1 ; increment loop counter
         cmp r3, r4 ; end addr
         jle cl_set_program_mem_loop
@@ -50,8 +50,8 @@ set_ram_mem:
     cl_set_ram_mem_loop:
         ldo r2, r0, 0 ; this is fine - buffer not in page0
         sto r2, r3, 0 ; store in new block pointer from r0
-        adi r0, r0, 2 ; increment pointer (gcc bug +2)
-        adi r3, r3, 1 ; increment loop counter
+        adi r0, r0, 2 ; increment pointer (u16*)
+        adi r3, r3, 2 ; increment loop counter
         cmp r3, r1 ; end addr
         jle cl_set_ram_mem_loop
 

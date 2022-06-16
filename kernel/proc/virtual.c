@@ -13,7 +13,7 @@ void memcpy_from_userspace(void* kbuff, struct proc* proc, u16 ubuff, size_t siz
     while (size) {
         map_page_zero(PHYS_PAGE(ubuff, proc->mem_pages));
         size_t to_copy = MIN(size, PAGE_SIZE - ADDR_PART(ubuff));
-        memcpy_full(kbuff, (void*)ADDR_PART(ubuff), to_copy);
+        memcpy(kbuff, (void*)ADDR_PART(ubuff), to_copy);
         size -= to_copy;
         ubuff += to_copy;
         kbuff = (void*) ((u16)kbuff+to_copy);
@@ -25,7 +25,7 @@ void memcpy_to_userspace(struct proc* proc, u16 ubuff, void* kbuff, size_t size)
     while (size) {
         map_page_zero(PHYS_PAGE(ubuff, proc->mem_pages));
         size_t to_copy = MIN(size, PAGE_SIZE - ADDR_PART(ubuff));
-        memcpy_full((void*)ADDR_PART(ubuff), kbuff, to_copy);
+        memcpy((void*)ADDR_PART(ubuff), kbuff, to_copy);
         size -= to_copy;
         ubuff += to_copy;
         kbuff = (void*) ((u16)kbuff+to_copy);
@@ -34,16 +34,17 @@ void memcpy_to_userspace(struct proc* proc, u16 ubuff, void* kbuff, size_t size)
 }
 
 extern void set_ram_mem(u16* data, int page, size_t end_addr, size_t offset);
-void load_into_userspace(int page, u16* data, size_t size, size_t offset) {
+void load_into_userspace(int page, void* data, size_t size, size_t offset) {
     ASSERT(offset+size <= PAGE_SIZE);
+    ASSERT(!(size&1));
     set_ram_mem(data, page, size+offset-1, offset);
     asm volatile ("":::"r0","r1","r2","r3","r4");
 }
 
 extern void set_program_mem(u16* data, int page, size_t end_addr, size_t offset);
-void load_into_userspace_program(int page, u16* data, size_t size, size_t offset) {
+void load_into_userspace_program(int page, void* data, size_t size, size_t offset) {
     ASSERT(offset+size <= PAGE_SIZE);
-
+    ASSERT(!(size&1));
     // addr: 4b page 11b prog_address 1b h/l. page size is still 0x1000*16b
     // exec: 4b page 12b prog_addr (but 12th of prg_addr is LSB of page while programming). Page must be <<1 while programming | 12th bit (see elf.c)
     set_program_mem(data, page, size+offset-1, offset);

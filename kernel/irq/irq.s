@@ -68,5 +68,5 @@ interrupt_handler:
 
 .ramd
 ; stack pointer value loaded after interrupt in kernel
-.init interrupt_sp, 0xEF, 0xF0 ;FIXME: just use kernel sp?
+.init interrupt_sp, 0xf0, 0xef ;le ;FIXME: just use kernel sp?
 .global r7_temp_location, 2

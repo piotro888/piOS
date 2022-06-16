@@ -62,11 +62,10 @@ struct elf_program_header {
 };
 
 #define LOAD_BUFF 0x100
-char load_buff[LOAD_BUFF];
-u16 load_buff_c[LOAD_BUFF/2];
+static char load_buff[LOAD_BUFF];
 
-char buff[HEADER_SIZE];
-char ph_buff[PH_SIZE];
+static char buff[HEADER_SIZE];
+static char ph_buff[PH_SIZE];
 
 // Casting buff to struct doesn't work due to gcc port, we need to use this :(
 #define GET_U8(buff, off) (buff)[(off)]
@@ -74,22 +73,21 @@ char ph_buff[PH_SIZE];
 #define GET_U32(buff, off) ((((u32)((buff)[(off)+3]))<<24ul) | (((u32)((buff)[(off)+2]))<<16ul) | \
                             (((u32)((buff)[(off)]))<<8ul) | (u32)((buff)[(off)]))
 
+// address is memory address
 void load_to_page(int fd, size_t off, size_t end_addr, int page, int prog) {
     ASSERT(end_addr < PAGE_SIZE);
 
     size_t m_addr = off;
     while (m_addr <= end_addr) {
-        size_t read = vfs_read(fd, load_buff, MIN(LOAD_BUFF, (end_addr - m_addr + (prog ? 2 : 1)) * 2));
-        read /= 2; // get size in memory address
+        size_t read = vfs_read(fd, load_buff, MIN(LOAD_BUFF, (end_addr - m_addr + (prog ? 2 : 1))*(prog ? 2 : 1)));
+        if(prog)
+            read /= 2; // get size in memory address
         ASSERT(read);
 
-        for(size_t i=0; i<read; i++) // compress 8->16
-            load_buff_c[i] = GET_U16(load_buff, i*2);
-
         if(prog)
-            load_into_userspace_program(page, load_buff_c, read, m_addr);
+            load_into_userspace_program(page, load_buff, read, m_addr);
         else
-            load_into_userspace(page, load_buff_c, read, m_addr);
+            load_into_userspace(page, load_buff, read, m_addr);
 
         m_addr += read;
     }
@@ -136,7 +134,7 @@ void load_ph(int fd, char* ph, struct proc* proc) {
         if(GET_U16(ph, PH_OFF_TYPE) == PT_LOAD) {
             u16 flags = GET_U16(ph, PH_OFF_FLAGS);
             int prog = (flags & PF_X) > 0;
-            int mem_div = (prog ? 4 : 2);
+            int mem_div = (prog ? 4 : 1);
 
             vfs_seek(fd, GET_U16(ph, PH_OFF_OFFSET), SEEK_SET);
             size_t mem_size = GET_U16(ph, PH_OFF_FILESZ)/mem_div;
