@@ -24,10 +24,11 @@ void __attribute__((noreturn)) init_stage1();
 /* C entry point for kernel */
 __attribute__((used))
 void _kstart() {
+    log_set_target(LOG_TARGET_TTY, 1);
     tty_init_basic();
-    tty_puts("\033[92mpios\033[97m");
-    tty_puts(" kernel booting\n");
-    tty_putc('\n');
+    log_early_puts("\033[92mpios\033[97m");
+    log_early_puts(" kernel booting\n");
+    log_early_putc('\n');
     kprintf("initializing kernel heap\n");
     init_malloc();
     kprintf("%uB heap available\n", mem_free_size());

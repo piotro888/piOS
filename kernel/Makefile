@@ -13,6 +13,7 @@ AOBJS=\
 	panic.ao\
 	driver/keyboard.ao\
 	driver/sd.ao\
+	driver/serial.ao\
 	driver/spi.ao\
 	driver/tty.ao\
 	driver/vga.ao\

@@ -1,13 +1,13 @@
 #include "log.h"
 
 #include <driver/tty.h>
+#include <driver/serial.h>
 #include <libk/kprintf.h>
 #include <libk/string.h>
 #include <proc/sched.h>
 #include <irq/timer.h>
 
-#define LOG_TARGET_VGA 0
-int LOG_TARGET = LOG_TARGET_VGA;
+static int LOG_TARGET_MASK = 0;
 
 #define LOG_BUFF_SIZE 512
 
@@ -44,11 +44,14 @@ void internal_log(char* msg, char* opt_fn_name, int opt_fn_line, int opt_err_lev
 
     va_end(args);
 
-    if(LOG_TARGET == LOG_TARGET_VGA) {
-        if(opt_err_level == 4)
+    if (LOG_TARGET_MASK & LOG_TARGET_TTY) {
+        if (opt_err_level == 4)
             tty_puts(log_buff); // blocking is not allowed in interrupt disabled sections
         else
             tty_direct_write(log_buff, log_ptr - log_buff + 1);
+    }
+    if (LOG_TARGET_MASK & LOG_TARGET_SERIAL) {
+        serial_direct_putc(log_buff); // TODO: blocking fs device write
     }
 }
 
@@ -62,3 +65,23 @@ kprintf("1.22 {W}[kauditd(3)]: 1kB left");
 // error
 kprintf("1.22 {E}[kauditd(3)]: Guard FAILED");
 */
+
+void log_set_target(int target, int enable) {
+    if (enable)
+        LOG_TARGET_MASK |= target;
+    else
+        LOG_TARGET_MASK &= target;
+}
+
+void log_early_putc(char c) {
+    if (LOG_TARGET_MASK & LOG_TARGET_TTY)
+        tty_putc(c);
+    
+    if (LOG_TARGET_MASK & LOG_TARGET_SERIAL)
+        serial_direct_putc(c);
+}
+
+void log_early_puts(char* str) {
+    while (*str)
+        log_early_putc(*str++);
+}

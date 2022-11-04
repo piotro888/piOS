@@ -1,6 +1,6 @@
 #include "kprintf.h"
 
-#include <driver/tty.h>
+#include <libk/log.h>
 #include <libk/string.h>
 
 #define PRINTF_TTY_BUFFER_SIZE 512
@@ -98,7 +98,7 @@ int kprintf(const char* str, ...) {
     int res = vsprintf(buff, str, list);
 
     va_end(list);
-    tty_puts(buff);
+    log_early_puts(buff);
 
     return  res;
 }

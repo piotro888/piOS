@@ -10,4 +10,11 @@ void internal_log(char* msg, char* opt_fn_name, int opt_fn_line, int opt_err_lev
 #define log_if(enable, x, ...) (enable) && log((x), 0, 0, 0, ##__VA_ARGS__)
 #define log_irq(x, ...) internal_log((x), 0, 0, 4, ##__VA_ARGS__)
 
+void log_early_puts(char* str);
+void log_early_putc(char c);
+void log_set_target(int target, int enable);
+
+#define LOG_TARGET_TTY (1<<0)
+#define LOG_TARGET_SERIAL (1<<1)
+
 #endif
