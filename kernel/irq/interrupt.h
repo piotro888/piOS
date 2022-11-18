@@ -1,14 +1,16 @@
 #ifndef IRQ_INTERRUPT_H
 #define IRQ_INTERRUPT_H
 
+#include <libk/types.h>
+
 void int_enable();
 void int_disable();
 int int_get();
 
-/* Macros for interrupt controller */
-#define IRQ_CLEAR_ADDR 0x24
-#define IRQ_STATUS_ADDR 0x20
-#define IRQ_CLEAR(x)   (*(volatile u16*) IRQ_CLEAR_ADDR) = (1<<(x))
-#define IRQ_PENDING(x) ((*(volatile u16*) IRQ_STATUS_ADDR) & (1<<(x)))
+/* Interrupt controller functions */
+
+void irq_clear(int id);
+int irq_pending(int id);
+void irq_mask(int id, int en);
 
 #endif

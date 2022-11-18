@@ -16,6 +16,7 @@ struct list proc_list;
 struct list_node* last_element = NULL;
 
 int scheduling_enabled = 0;
+int handling_interrupt = 0;
 
 int pid_now = 0;
 
@@ -95,7 +96,7 @@ int make_kernel_thread(char* name, void __attribute__((noreturn)) (*entry)()) {
         p->mem_pages[i] = i;
         p->prog_pages[i] = i;
     }
-
+    p->mem_pages[0] = 0; // illegal page
     // set stack page to new page (thread)
     p->mem_pages[15] = first_free_page++;
     // setup sp and fp (fe - aligned to 2)

@@ -42,14 +42,14 @@ void interrupt(const int state) {
 
     // interrupt request and syscall could happen at same time
     // clear interrupt pending from controller and process interrupts
-    if(IRQ_PENDING(KEYBOARD_IRQ_ID)) {
-        IRQ_CLEAR(KEYBOARD_IRQ_ID);
+    if(irq_pending(KEYBOARD_IRQ_ID)) {
+        irq_clear(KEYBOARD_IRQ_ID);
         u8 scancode = *(SCANCODE_ADDR);
         print_scancode(scancode);
     }
 
-    if(IRQ_PENDING(TIMER_IRQ_ID)) {
-        IRQ_CLEAR(TIMER_IRQ_ID);
+    if(irq_pending(TIMER_IRQ_ID)) {
+        irq_clear(TIMER_IRQ_ID);
         sys_ticks++;
         should_switch_thread = 1;
     }
@@ -96,4 +96,31 @@ int int_get() {
     );
 
     return (sr & 0x4) > 0;
+}
+
+#define IRQC_PAGE 0x4
+#define IRQ_STATUS_ADDR 0x18
+#define IRQ_CLEAR_ADDR 0x1a
+#define IRQ_MASK_ADDR 0x1c
+
+void irq_clear(int id) {
+    map_page_zero(IRQC_PAGE);
+    (*(volatile u16*) IRQ_CLEAR_ADDR) = (1<<(id));
+    map_page_zero(ILLEGAL_PAGE);
+}
+
+int irq_pending(int id) {
+    map_page_zero(IRQC_PAGE);
+    int en = ((*(volatile u16*) IRQ_STATUS_ADDR) & (1<<(id)));
+    map_page_zero(ILLEGAL_PAGE);
+    return en;
+}
+
+void irq_mask(int id, int en) {
+    map_page_zero(IRQC_PAGE);
+    if (en)
+        *((volatile u16*)IRQ_MASK_ADDR) |= (1<<id);
+    else
+        *((volatile u16*)IRQ_MASK_ADDR) &= ~(1<<id);
+    map_page_zero(ILLEGAL_PAGE);
 }

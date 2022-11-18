@@ -18,7 +18,7 @@ void memcpy_from_userspace(void* kbuff, struct proc* proc, u16 ubuff, size_t siz
         ubuff += to_copy;
         kbuff = (void*) ((u16)kbuff+to_copy);
     }
-    map_page_zero(0);
+    map_page_zero(scheduling_enabled ? current_proc->mem_pages[0] : ILLEGAL_PAGE);
 }
 
 void memcpy_to_userspace(struct proc* proc, u16 ubuff, void* kbuff, size_t size) {
@@ -30,7 +30,7 @@ void memcpy_to_userspace(struct proc* proc, u16 ubuff, void* kbuff, size_t size)
         ubuff += to_copy;
         kbuff = (void*) ((u16)kbuff+to_copy);
     }
-    map_page_zero(0);
+    map_page_zero(scheduling_enabled ? current_proc->mem_pages[0] : ILLEGAL_PAGE);
 }
 
 extern void set_ram_mem(u16* data, int page, size_t end_addr, size_t offset);
@@ -54,6 +54,11 @@ void load_into_userspace_program(int page, void* data, size_t size, size_t offse
 extern void set_mapping_from_struct(int* pages);
 __attribute__((noreturn)) extern void c_switch(int* regs);
 void switch_to_userspace(struct proc* p) {
+    // this function can be called only from init or irq handler
+    // disabling paging here is needed to set new paging and all our data needs to be still accessible with default addressing
+    disable_paging();
+    handling_interrupt = 0;
+
     set_mapping_from_struct(p->mem_pages);
     asm volatile ("":::"r1"); // clobber r1
 
@@ -61,12 +66,20 @@ void switch_to_userspace(struct proc* p) {
 }
 
 inline void map_page_zero(int page) {
-    current_proc->mem_pages[0] = page;
+    if(scheduling_enabled && !handling_interrupt) // scheduling disabled - no interrupts, no need to restore this value. Dont overwrite thread pages in irq handler
+        current_proc->mem_pages[0] = page;
 
     asm volatile (
         "srs %0, 0x10"
         :: "r" (page)
     );
+}
+
+// sets memory paging to default kernel setting (as with paging disabled). Allows to use map_page_zero
+extern void enable_default_memory_paging_asm();
+void enable_default_memory_paging() {
+    enable_default_memory_paging_asm();
+    asm volatile ("":::"r1");
 }
 
 inline void enable_paging() {

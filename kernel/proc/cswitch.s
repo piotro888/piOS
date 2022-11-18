@@ -165,6 +165,46 @@ c_switch:
 
     srl r0, 6 ; recover r1 saved before paging enable
 
+enable_default_memory_paging_asm:
+    ldi r1, 0x0 ; illegal page
+    srs r1, 0x200
+    ldi r1, 0x201 ; 2nd SDRAM page
+    srs r1, 0x201
+    ldi r1, 0x202
+    srs r1, 0x202
+    ldi r1, 0x203
+    srs r1, 0x203
+    ldi r1, 0x204
+    srs r1, 0x204
+    ldi r1, 0x205
+    srs r1, 0x205
+    ldi r1, 0x206
+    srs r1, 0x206
+    ldi r1, 0x207
+    srs r1, 0x207
+    ldi r1, 0x208
+    srs r1, 0x208
+    ldi r1, 0x209
+    srs r1, 0x209
+    ldi r1, 0x20a
+    srs r1, 0x20a
+    ldi r1, 0x20b
+    srs r1, 0x20b
+    ldi r1, 0x20c
+    srs r1, 0x20c
+    ldi r1, 0x20d
+    srs r1, 0x20d
+    ldi r1, 0x20e
+    srs r1, 0x20e
+    ldi r1, 0x20f
+    srs r1, 0x20f
+
+    srl r1, 1
+    ori r1, r1, 0b10 ; enable  MEMory PAGing
+    srs r1, 1
+
+    srs r6, 0
+
     irt ; jump to pc stored in sr3
 
 ; Thread to schedule when no process is ready. It is interruptable and not allowed to use memory
