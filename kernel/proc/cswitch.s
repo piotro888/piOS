@@ -10,7 +10,10 @@ set_program_mem:
     srl r4, 1
     mov r6, r4 ; save old flags
 
-    srs r1, 0x10 ; set page zero mapping
+    ldi r1, 0b011 ; flags: SUP and MEMory PAGing
+
+    ori r1, r1, 0x1000 ; set page 0 as load to program memory
+    srs r1, 0x100 ; set page zero mapping
 
     mov r4, r2
     ; r3 - loop counter
@@ -39,16 +42,16 @@ set_ram_mem:
     sto r6, r7, 0 ; save pc on stack
     srl r4, 1
     mov r6, r4 ; save old flags
-    ori r4, r4, 0x8 ; same as before but do not set instr override
+    ori r4, r4, 0x2 ; same as before but do not set instr override
     srs r4, 1
 
-    srs r1, 0x10 ; set page zero mapping
+    srs r1, 0x100 ; set page zero mapping
 
     mov r1, r2
 
    ; r3 - loop counter
     cl_set_ram_mem_loop:
-        ldo r2, r0, 0 ; this is fine - buffer not in page0
+        ldo r2, r0, 0 ; this is fine - buffer must not be in page0
         sto r2, r3, 0 ; store in new block pointer from r0
         adi r0, r0, 2 ; increment pointer (u16*)
         adi r3, r3, 2 ; increment loop counter
@@ -68,70 +71,70 @@ set_ram_mem:
 ; @param r0 pointer to mem_pages*16 + prog_pages*16
 set_mapping_from_struct:
     ldo r1, r0, 0
-    srs r1, 0x10
+    srs r1, 0x200
     ldo r1, r0, 2
-    srs r1, 0x11
+    srs r1, 0x201
     ldo r1, r0, 4
-    srs r1, 0x12
+    srs r1, 0x202
     ldo r1, r0, 6
-    srs r1, 0x13
+    srs r1, 0x203
     ldo r1, r0, 8
-    srs r1, 0x14
+    srs r1, 0x204
     ldo r1, r0, 10
-    srs r1, 0x15
+    srs r1, 0x205
     ldo r1, r0, 12
-    srs r1, 0x16
+    srs r1, 0x206
     ldo r1, r0, 14
-    srs r1, 0x17
+    srs r1, 0x207
     ldo r1, r0, 16
-    srs r1, 0x18
+    srs r1, 0x208
     ldo r1, r0, 18
-    srs r1, 0x19
+    srs r1, 0x209
     ldo r1, r0, 20
-    srs r1, 0x1A
+    srs r1, 0x20a
     ldo r1, r0, 22
-    srs r1, 0x1B
+    srs r1, 0x20b
     ldo r1, r0, 24
-    srs r1, 0x1C
+    srs r1, 0x20c
     ldo r1, r0, 26
-    srs r1, 0x1D
+    srs r1, 0x20d
     ldo r1, r0, 28
-    srs r1, 0x1E
+    srs r1, 0x20e
     ldo r1, r0, 30
-    srs r1, 0x1F
+    srs r1, 0x20f
     ldo r1, r0, 32
-    srs r1, 0x20
+    srs r1, 0x100
     ldo r1, r0, 34
-    srs r1, 0x21
+    srs r1, 0x101
     ldo r1, r0, 36
-    srs r1, 0x22
+    srs r1, 0x102
     ldo r1, r0, 38
-    srs r1, 0x23
+    srs r1, 0x103
     ldo r1, r0, 40
-    srs r1, 0x24
+    srs r1, 0x104
     ldo r1, r0, 42
-    srs r1, 0x25
+    srs r1, 0x105
     ldo r1, r0, 44
-    srs r1, 0x26
+    srs r1, 0x106
     ldo r1, r0, 46
-    srs r1, 0x27
+    srs r1, 0x107
     ldo r1, r0, 48
-    srs r1, 0x28
+    srs r1, 0x108
     ldo r1, r0, 50
-    srs r1, 0x29
+    srs r1, 0x109
     ldo r1, r0, 52
-    srs r1, 0x2A
+    srs r1, 0x10a
     ldo r1, r0, 54
-    srs r1, 0x2B
+    srs r1, 0x10b
     ldo r1, r0, 56
-    srs r1, 0x2C
+    srs r1, 0x10c
     ldo r1, r0, 58
-    srs r1, 0x2D
+    srs r1, 0x10d
     ldo r1, r0, 60
-    srs r1, 0x2E
+    srs r1, 0x10e
     ldo r1, r0, 62
-    srs r1, 0x2F
-    
+    srs r1, 0x10f
+
     srs r6, 0 ; return 
 
 ; @param r0 ptr to registeres
@@ -157,13 +160,16 @@ c_switch:
     ldo r6, r0, 12
     ldo r7, r0, 14
 
-    ldi r0, 0x19 ; enable rom paging, priv and stdmem mode. *remember about arithmetic flags!*; irq is set by iret
+    ldi r0, 0x3 ; enable ram paging and priv. *remember about arithmetic flags!*; irq is set by iret
     srs r0, 1
 
-    ldi r0, 0b10
+    ldi r0, 0x1
     srs r0, 2 ; set jtr rom paging
 
-    srl r0, 6 ; recover r1 saved before paging enable
+    srl r0, 6 ; recover r0 saved before paging enable
+
+    irt ; jump to pc stored in sr3 and enable interrupts
+
 
 enable_default_memory_paging_asm:
     ldi r1, 0x0 ; illegal page
@@ -205,7 +211,6 @@ enable_default_memory_paging_asm:
 
     srs r6, 0
 
-    irt ; jump to pc stored in sr3
 
 ; Thread to schedule when no process is ready. It is interruptable and not allowed to use memory
 idle_task:

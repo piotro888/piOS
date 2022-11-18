@@ -51,7 +51,9 @@ void internal_log(char* msg, char* opt_fn_name, int opt_fn_line, int opt_err_lev
             tty_direct_write(log_buff, log_ptr - log_buff + 1);
     }
     if (LOG_TARGET_MASK & LOG_TARGET_SERIAL) {
-        serial_direct_putc(log_buff); // TODO: blocking fs device write
+        char* log_buff_p = log_buff;
+        while (*log_buff_p)
+            serial_direct_putc(*log_buff_p++); // TODO: blocking fs device write
     }
 }
 

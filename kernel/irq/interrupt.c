@@ -11,6 +11,9 @@
 #include <irq/timer.h>
 #include <sys/sysd.h>
 
+#define SFLAG_SYSCALL 0x2
+#define SFLAG_SEGFAULT 0x8
+
 /* Interrupt handler called from irq.s */
 __attribute__((used))
 void interrupt(const int state) {
@@ -20,20 +23,27 @@ void interrupt(const int state) {
     current_proc->pc =          *(int*)(state+28-20);
     current_proc->arith_flags = *(int*)(state+28-22);
 
+    u16 status_flag = (*(int*)(state+28-24));
+
+    enable_default_memory_paging();
+    handling_interrupt = 1;
+
     // Thread should be only switched on syscall and timer interrupts
     int should_switch_thread = 0;
-
-    // check for syscall flag in sr
-    int syscall_flag = (*(int*)(state+28-24)) & 0x8;
-
-    if(syscall_flag && (current_proc->type == PROC_TYPE_USER || current_proc->type == PROC_TYPE_PRIV)) {
+ 
+    if((status_flag & SFLAG_SYSCALL) && (current_proc->type == PROC_TYPE_USER || current_proc->type == PROC_TYPE_PRIV)) {
         log_irq("syscall: r0 %d pc 0x%x", current_proc->regs[0], current_proc->pc);
         sysd_submit(current_proc->pid);
         should_switch_thread = 1;
     }
 
+    if(status_flag & SFLAG_SEGFAULT) {
+        log_irq("fault pc: %x", current_proc->pc);
+        panic("kernel SEGFAULT");
+    }
+
     /* syscall from thread is always just YIELD */
-    if(syscall_flag && current_proc->type == PROC_TYPE_KERNEL) {
+    if((status_flag & SFLAG_SYSCALL) && current_proc->type == PROC_TYPE_KERNEL) {
         should_switch_thread = 1;
     }
 

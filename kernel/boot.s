@@ -18,8 +18,8 @@ _startpoint:
 	; mark r0
 	ldi r0, 0x314
 
-	; set cpu flags: privileged and compatibile memory access mode
-	ldi r0, 0x11
+	; set cpu flags: privileged mode
+	ldi r0, 0x1
 	srs r0, 1
 	
 	; call _start in kstart.c

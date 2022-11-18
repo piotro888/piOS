@@ -21,8 +21,8 @@ int handling_interrupt = 0;
 int pid_now = 0;
 
 // FIXME: Request pages from virtual memory manager
-int first_free_page = 17;
-int first_free_prog_page = 17;
+int first_free_page = 0x211;
+int first_free_prog_page = 0x11;
 
 extern void __attribute__((noreturn)) idle_task();
 struct proc idle_struct;
@@ -93,12 +93,13 @@ int make_kernel_thread(char* name, void __attribute__((noreturn)) (*entry)()) {
 
     // set virtual pages to kernel mapping
     for(int i=0; i<16; i++) {
-        p->mem_pages[i] = i;
+        p->mem_pages[i] = 0x200 + i;
         p->prog_pages[i] = i;
     }
     p->mem_pages[0] = 0; // illegal page
     // set stack page to new page (thread)
     p->mem_pages[15] = first_free_page++;
+
     // setup sp and fp (fe - aligned to 2)
     p->regs[7] = 0xfffe;
     p->regs[5] = 0xfffe;

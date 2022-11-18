@@ -5,6 +5,6 @@ extern unsigned int sys_ticks;
 
 void timer_init();
 
-#define TIMER_IRQ_ID 1
+#define TIMER_IRQ_ID 0
 
 #endif

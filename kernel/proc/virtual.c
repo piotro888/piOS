@@ -70,7 +70,7 @@ inline void map_page_zero(int page) {
         current_proc->mem_pages[0] = page;
 
     asm volatile (
-        "srs %0, 0x10"
+        "srs %0, 0x200"
         :: "r" (page)
     );
 }
@@ -85,7 +85,7 @@ void enable_default_memory_paging() {
 inline void enable_paging() {
     asm volatile (
         "srl r0, 1\n"
-        "ori r0, r0, 0x8\n"
+        "ori r0, r0, 0x2\n"
         "srs r0, 1\n"
         ::: "r0"
     );
@@ -94,7 +94,7 @@ inline void enable_paging() {
 inline void disable_paging() {
     asm volatile (
         "srl r0, 1\n"
-        "ani r0, r0, 0xf7\n"
+        "ani r0, r0, 0xfd\n"
         "srs r0, 1\n"
         ::: "r0"
     );
