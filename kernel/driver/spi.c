@@ -1,41 +1,55 @@
 #include "spi.h"
 
-#define SPI_IO_ADDR (u16*) 0x8
-#define SPI_CS_ADDR (u16*) 0x10
+#include <proc/virtual.h>
 
-#define READY_BIT 0x8000
+#define DEVICE_PAGE 0x4
+#define SPI_TX (volatile u8*) 0x20
+#define SPI_RX (volatile u8*) 0x22
+#define SPI_STATUS (volatile u8*) 0x24
+#define SPI_SETTINGS (volatile u8*) 0x26
+#define SPI_CS (volatile u8*) 0x28
 
-uint16_t spi_cs_mask;
+#define BUSY_BIT 0x1
 
-uint8_t spi_tranceive(uint8_t byte) {
-    volatile uint16_t* spi_io_reg = SPI_IO_ADDR;
-
-    while (!(*spi_io_reg & READY_BIT));
-
-    *spi_io_reg = byte;
-
-    while (!(*spi_io_reg & READY_BIT));
-
-    return (*spi_io_reg)&0xFF;
+void spi_init() {
+    map_page_zero(DEVICE_PAGE);
+    // SPI mode 0 (CPOL=0 CPHA=0)
+    // Clock div 5 (200kHz)
+    *SPI_SETTINGS = (0x0 << 4) | 0x4;
+    map_page_zero(ILLEGAL_PAGE);
 }
 
-void spi_transmit(uint8_t byte) {
+u8 spi_tranceive(uint8_t byte) {
+    map_page_zero(DEVICE_PAGE);
+
+    while ((*SPI_STATUS & BUSY_BIT));
+
+    *SPI_TX = byte;
+
+    while ((*SPI_STATUS & BUSY_BIT));
+
+    u8 resp = *SPI_RX;
+
+    map_page_zero(ILLEGAL_PAGE);
+    return resp;
+}
+
+void spi_transmit(u8 byte) {
     spi_tranceive(byte);
 }
 
-uint8_t spi_receive() {
+u8 spi_receive() {
     return spi_tranceive(0xFF);
 }
 
-void spi_cs_set(uint8_t value, uint8_t dev_no) {
-    volatile uint16_t* spi_cs_reg = SPI_CS_ADDR;
-    
+u8 spi_cs_set(u8 value, u8 dev_no) {
+    map_page_zero(DEVICE_PAGE);
     if(value)
-        spi_cs_mask |= (1<<dev_no);
-    else {
-        spi_cs_mask |= (1<<dev_no);
-        spi_cs_mask ^= (1<<dev_no);
-    }
+        *SPI_CS |= (1<<dev_no);
+    else
+        *SPI_CS &= ~(1<<dev_no);
 
-    *spi_cs_reg = spi_cs_mask;
+    u8 ret = *SPI_CS;
+    map_page_zero(ILLEGAL_PAGE);
+    return ret;
 }

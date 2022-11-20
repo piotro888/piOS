@@ -5,6 +5,7 @@
 
 #include <art.h>
 #include <driver/sd.h>
+#include <driver/spi.h>
 #include <driver/tty.h>
 #include <fs/kbd.h>
 #include <fs/tar.h>
@@ -40,7 +41,8 @@ void _kstart() {
     timer_init();
     scheduler_init();
     kprintf("initializing devices\n");
-    //sd_init();
+    spi_init();
+    sd_init();
     kprintf("initializing full tty driver\n");
     //tty_init_driver();
     //tty_register_thread();

@@ -3,12 +3,12 @@
 
 #include <libk/types.h>
 
-void spi_transmit(uint8_t byte);
-uint8_t spi_receive();
-void spi_cs_set(uint8_t value, uint8_t dev_no);
+void spi_init();
 
-uint8_t spi_tranceive(uint8_t byte);
+void spi_transmit(u8 byte);
+u8 spi_receive();
+u8 spi_cs_set(u8 value, u8 dev_no);
 
-extern uint16_t spi_cs_mask;
+u8 spi_tranceive(u8 byte);
 
 #endif
