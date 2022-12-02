@@ -24,7 +24,8 @@ void blockq_pop(struct blockq* s, void* buff) {
 
     spinlock_lock(&s->read_lock);
     ASSERT(s->size > 0);
-    ringbuff_read(&s->rbuff, buff, s->base_size);
+    size_t rb = ringbuff_read(&s->rbuff, buff, s->base_size);
+    ASSERT(rb == s->base_size);
     s->size--;
     spinlock_unlock(&s->read_lock);
 
@@ -38,7 +39,8 @@ void blockq_push(struct blockq* s, void* buff) {
     semaphore_down(&s->not_full);
 
     spinlock_lock(&s->write_lock);
-    ringbuff_write(&s->rbuff, buff, s->base_size);
+    size_t wb = ringbuff_write(&s->rbuff, buff, s->base_size);
+    ASSERT(wb == s->base_size);
     s->size++;
     ASSERT(s->size <= s->max_size);
     spinlock_unlock(&s->write_lock);
