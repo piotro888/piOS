@@ -23,7 +23,7 @@ int process_syscall(struct proc* proc) {
         case SYS_PRINT: {
             char* pb = kmalloc(proc->regs[2]);
             memcpy_from_userspace(pb, proc, proc->regs[1], proc->regs[2]);
-            tty_direct_write(pb, proc->regs[2]);
+            log(pb);
             kfree(pb);
             break;
         }

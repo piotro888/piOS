@@ -8,10 +8,16 @@ void internal_log(char* msg, char* opt_fn_name, int opt_fn_line, int opt_err_lev
 #define log_err(x, ...) internal_log(x, 0, 0, 2, ##__VA_ARGS__)
 #define log_fn(x, ...) internal_log((x), " "__FILE__":", __LINE__, 0, ##__VA_ARGS__)
 #define log_if(enable, x, ...) (enable) && log((x), 0, 0, 0, ##__VA_ARGS__)
+#ifdef DEBUG
+#define log_dbg(x, ...) internal_log((x), 0, 0, 0, ##__VA_ARGS__)
+#else
+#define log_dbg(x, ...)
+#endif
 #define log_irq(x, ...) internal_log((x), 0, 0, 4, ##__VA_ARGS__)
 
 void log_early_puts(char* str);
 void log_early_putc(char c);
+void log_early_putx(unsigned int x);
 void log_set_target(int target, int enable);
 
 #define LOG_TARGET_TTY (1<<0)

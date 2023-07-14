@@ -32,7 +32,7 @@ void internal_log(char* msg, char* opt_fn_name, int opt_fn_line, int opt_err_lev
     char line_buff[5];
     line_buff[0] = '\0';
     if(opt_fn_line!= 0)
-        utoa(line_buff, opt_fn_line, 10);
+        _utoa(line_buff, opt_fn_line, 10);
 
     va_list args;
     va_start(args, opt_err_level);
@@ -45,7 +45,7 @@ void internal_log(char* msg, char* opt_fn_name, int opt_fn_line, int opt_err_lev
     va_end(args);
 
     if (LOG_TARGET_MASK & LOG_TARGET_TTY) {
-        if (opt_err_level == 4)
+        if (opt_err_level == 3)
             tty_puts(log_buff); // blocking is not allowed in interrupt disabled sections
         else
             tty_direct_write(log_buff, log_ptr - log_buff + 1);
@@ -87,3 +87,13 @@ void log_early_puts(char* str) {
     while (*str)
         log_early_putc(*str++);
 }
+
+void log_early_putx(unsigned int x) {
+    for (int i=3; i>=0; i--) {
+        int seg = (x>>(i*4)) & 0xf;
+        if (seg < 10)
+            log_early_putc('0' + seg);
+        else
+            log_early_putc('A' + seg-10);
+    }
+} 

@@ -2,5 +2,6 @@
 #define PANIC_H
 
 void panic(char* msg);
+void print_stacktrace();
 
 #endif

@@ -38,8 +38,12 @@ void interrupt(const int state) {
     }
 
     if(status_flag & SFLAG_SEGFAULT) {
-        log_irq("fault pc: %x", current_proc->pc);
-        panic("kernel SEGFAULT");
+        log_irq("SEGFAULT! pc: %x", current_proc->pc);
+        log_irq("PID: %d DUMP r0:0x%x r1:0x%x r2:0x%x r3:0x%x r4:0x%x r5:0x%x r6:0x%x r7:0x%x vpc:0x%x",
+                current_proc->pid, current_proc->regs[0], current_proc->regs[1], current_proc->regs[2], current_proc->regs[3], current_proc->regs[4], current_proc->regs[5],
+                current_proc->regs[6], current_proc->regs[7], current_proc->pc);
+        if (current_proc->type != PROC_TYPE_KERNEL)
+            panic("SEGFAULT INSIDE KERNEL");
     }
 
     /* syscall from thread is always just YIELD */
@@ -67,7 +71,6 @@ void interrupt(const int state) {
     if(scheduling_enabled) {
         if(should_switch_thread)
             sched_pick_next();
-
         ASSERT(current_proc->state != PROC_STATE_UNLOADED);
         switch_to_userspace(current_proc);
         ASSERT_NOT_REACHED();
