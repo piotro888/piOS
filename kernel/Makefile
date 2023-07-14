@@ -1,76 +1,83 @@
-CC := ~/opt/gcc-pcpu/bin/pcpu-unknown-elf-gcc 
-ASM := python3 ~/opt/pcpu-tools/pas.py
-ASMCONV := python3 ~/opt/pcpu-tools/asmconv.py
-SEND := python3 ../tools/send.py
-PEMU := ~/pcpu/toolchain/pcpuemu
-PCE := ~/opt/pcpu-tools/pce
+CC := ~/llvm-project/rbuild/bin/clang
+LD := ~/llvm-project/rbuild/bin/ld.lld
+AS := ~/llvm-project/rbuild/bin/llvm-mc
+OBJCOPY := ~/llvm-project/rbuild/bin/llvm-objcopy
 
-CFLAGS := -S -Wall -Wextra -pedantic -I.
+CFLAGS := -target pcpu -integrated-as -I. -Wall -Wextra -pedantic -fno-signed-char
+CFLAGS_WNO :=  -Wno-strict-prototypes -Wno-language-extension-token -Wno-gnu-binary-literal -Wno-language-extension-token -Wno-gnu-zero-variadic-macro-arguments
+SFLAGS := --arch PCPU --filetype=obj
+LFLAGS := -T link.ld
 
-AOBJS=\
-	boot.ao\
-	kstart.ao\
-	panic.ao\
-	driver/keyboard.ao\
-	driver/sd.ao\
-	driver/serial.ao\
-	driver/spi.ao\
-	driver/tty.ao\
-	driver/vga.ao\
-	fs/dirtree.ao\
-	fs/kbd.ao\
-	fs/tar.ao\
-	fs/vfs.ao\
-	irq/interrupt.ao\
-	irq/irq.ao\
-	irq/timer.ao\
-	libk/assert.ao\
-	libk/atomic.ao\
-	libk/kmalloc.ao\
-	libk/kprintf.ao\
-	libk/list.ao\
-	libk/log.ao\
-	libk/ringbuff.ao\
-	libk/string.ao\
-	libk/con/blockq.ao\
-	libk/con/semaphore.ao\
-	libk/con/spinlock.ao\
-	proc/cswitch.ao\
-	proc/elf.ao\
-	proc/sched.ao\
-	proc/virtual.ao\
-	sys/sysd.ao\
-	sys/sysres.ao
 
-.PHONY: all clean
+SOURCES=\
+	boot.S \
+	kstart.c \
+	panic.c \
+	driver/keyboard.c \
+	driver/sd.c \
+ 	driver/tty.c \
+	driver/serial.c \
+	driver/spi.c \
+	driver/vga.c \
+	fs/dirtree.c \
+	fs/kbd.c \
+	fs/sio.c \
+	fs/tar.c \
+	fs/vfs.c \
+	irq/interrupt.c \
+	irq/irq.S \
+	irq/timer.c \
+	libk/assert.c \
+	libk/atomic.c \
+	libk/kmalloc.c \
+	libk/kprintf.c \
+	libk/list.c \
+	libk/log.c \
+	libk/ringbuff.c \
+	libk/string.c \
+	libk/con/blockq.c \
+	libk/con/semaphore.c \
+	libk/con/spinlock.c \
+	proc/cswitch.S \
+	proc/elf.c \
+	proc/sched.c \
+	proc/virtual.c\
+	sys/sysd.c \
+	sys/sysres.c
 
-all: kernel.hex
 
-upload: kernel.pbl
-	$(SEND) build/kernel.pbl
+OBJS=$(patsubst %, build/%.o, $(SOURCES))
 
-kernel.pbl: $(AOBJS)
-	cd build && cat $(AOBJS) > kernel.ao 
-	$(ASM) -b build/kernel.ao -o build/kernel.pbl -m
+.PHONY: all clean bin
 
-kernel.hex: $(AOBJS)
-	cd build && cat $(AOBJS) > kernel.ao 
-	$(ASM) build/kernel.ao -o build/kernel.hex
+all: bin
 
-%.ao: %.c
-	mkdir -p build/$(@D)
-	$(CC) $< $(CFLAGS) -o build/$@.tmp
-	$(ASMCONV) build/$@.tmp > build/$@
+bin: build/kernel_text.bin build/kernel_data.bin
 
-%.ao: %.s
-	mkdir -p build/$(@D)
-	cp $< build/$@
+build/kernel_text.bin: build/kernel.elf
+	$(OBJCOPY) --dump-section .text=$@ $< 
+
+build/kernel_data.bin: build/kernel.elf
+	$(OBJCOPY) --dump-section .data=$@ $<
+
+build/kernel.elf: $(OBJS)
+	$(LD) $^ -o $@ $(LFLAGS)
+
+build/%.c.o : %.c
+	@mkdir -p $(@D)
+	$(CC) $< -o $@ -c $(CFLAGS) $(CFLAGS_WNO)
+
+build/%.s.o: %.s
+	@mkdir -p $(@D)
+	$(AS) $< -o $@ $(SFLAGS)
+
+build/%.S.o: build/%.S
+	@mkdir -p $(@D)
+	$(AS) $< -o $@ $(SFLAGS)
+
+build/%.S: %.S
+	@mkdir -p $(@D)
+	$(CC) -E $< > $@ -target pcpu
 
 clean:
 	rm -rf build/
-
-emu: kernel.hex kernel.pbl
-	$(PEMU) build/kernel.hex build/kernel.pbl
-
-pce: kernel.pbl
-	$(PCE) build/kernel.pbl build/kernel.pbl.mm ../test.tar --run

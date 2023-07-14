@@ -1,7 +1,12 @@
 ; 00050004
 ; 0001000E
+#ifdef PAS_DIRS
 .romd
+#endif
 
+#ifndef PAS_DIRS
+.global set_program_mem
+#endif
 ; r0-data* r1-page r2-end_addr r3-off
 set_program_mem:
     ; save pc on stack
@@ -37,6 +42,9 @@ set_program_mem:
     ldo r6, r7, 0 ; recover pc from stack
     srs r6, 0 ; return
 
+#ifndef PAS_DIRS
+.global set_ram_mem
+#endif
 ; r0-data* r1-page r2-end_addr r3-off
 set_ram_mem:
     sto r6, r7, 0 ; save pc on stack
@@ -45,7 +53,7 @@ set_ram_mem:
     ori r4, r4, 0x2 ; same as before but do not set instr override
     srs r4, 1
 
-    srs r1, 0x100 ; set page zero mapping
+    srs r1, 0x200 ; set page zero mapping
 
     mov r1, r2
 
@@ -67,6 +75,9 @@ set_ram_mem:
     ldo r6, r7, 0 ; recover pc from stack
     srs r6, 0 ; return
 
+#ifndef PAS_DIRS
+.global set_mapping_from_struct
+#endif
 ; set virtual page mapping to values in struct
 ; @param r0 pointer to mem_pages*16 + prog_pages*16
 set_mapping_from_struct:
@@ -137,6 +148,9 @@ set_mapping_from_struct:
 
     srs r6, 0 ; return 
 
+#ifndef PAS_DIRS
+.global c_switch
+#endif
 ; @param r0 ptr to registeres
 c_switch:
     ; load arithmetic flags
@@ -171,6 +185,9 @@ c_switch:
     irt ; jump to pc stored in sr3 and enable interrupts
 
 
+#ifndef PAS_DIRS
+.global enable_default_memory_paging_asm
+#endif
 enable_default_memory_paging_asm:
     ldi r1, 0x0 ; illegal page
     srs r1, 0x200
@@ -212,10 +229,15 @@ enable_default_memory_paging_asm:
     srs r6, 0
 
 
+#ifndef PAS_DIRS
+.global idle_task
+#endif
 ; Thread to schedule when no process is ready. It is interruptable and not allowed to use memory
 idle_task:
     ldi r0, 0
     idle_task_l:
         jmp idle_task_l
 
+#ifdef PAS_DIRS
 .ramd
+#endif
