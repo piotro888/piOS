@@ -1,0 +1,2 @@
+;.ramd
+;.init fini 0x88, 0x22

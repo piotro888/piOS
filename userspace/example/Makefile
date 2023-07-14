@@ -1,36 +1,37 @@
-CC := ~/opt/gcc-pcpu/bin/pcpu-unknown-elf-gcc 
-ASM := python3 ~/opt/pcpu-tools/pas.py
-ASMCONV := python3 ~/opt/pcpu-tools/asmconv.py
+CC := ~/llvm-project/rbuild/bin/clang
+LD := ~/llvm-project/rbuild/bin/ld.lld
+AS := ~/llvm-project/rbuild/bin/llvm-mc
 
-CFLAGS := -S -Wall -Wextra -pedantic -I.
+CFLAGS := -target pcpu -integrated-as -I. -fno-signed-char -Wall -Wextra -pedantic -I../../lib/libpios
+SFLAGS := --arch PCPU --filetype=obj
+LFLAGS := -T link.ld
 
 NAME := example
 
 BIN_TARGET := /bin/example
 
-AOBJS=\
-    crt0.ao\
-    main.ao
+SOURCES=\
+    crt0.s\
+    main.c\
+	crtn.s
+
+OBJS=$(patsubst %, build/%.o, $(SOURCES))
 
 .PHONY: elf clean copy
 
-copy: elf
-	mkdir -p ../../base${BIN_TARGET}
+copy: build/$(NAME)
 	cp build/${NAME} ../../base${BIN_TARGET}
 
-elf: $(AOBJS)
-	cd build && cat $(AOBJS) > elfcat.ao 
-	$(ASM) build/elfcat.ao -o build/${NAME} --elf-exec
-	chmod +x build/${NAME}
+build/$(NAME): $(OBJS)
+	$(LD) $^ -o $@ $(LFLAGS)
 
-%.ao: %.c
-	mkdir -p build/$(@D)
-	$(CC) $< $(CFLAGS) -o build/$@.tmp
-	$(ASMCONV) build/$@.tmp > build/$@
+build/%.c.o : %.c
+	@mkdir -p $(@D)
+	$(CC) $< -o $@ -c $(CFLAGS)
 
-%.ao: %.s
-	mkdir -p build/$(@D)
-	cp $< build/$@
+build/%.s.o: %.s
+	@mkdir -p $(@D)
+	$(AS) $< -o $@ $(SFLAGS)
 
 clean:
 	rm -rf build/

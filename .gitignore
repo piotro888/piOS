@@ -1,1 +1,9 @@
-*/build/
+build/
+
+.idea/
+.vscode/
+
+base/
+notes/
+
+*.tar
