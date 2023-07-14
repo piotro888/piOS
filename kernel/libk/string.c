@@ -1,6 +1,6 @@
 #include "string.h"
 
-size_t strcmp(char* str1, char* str2) {
+ssize_t strcmp(const char* str1, const char* str2) {
     while(*str1 == *str2) {
         if(*str1 == 0 && *str2 == 0)
             return 0;
@@ -10,7 +10,7 @@ size_t strcmp(char* str1, char* str2) {
     return *str1-*str2;
 }
 
-size_t strncmp(char* str1, char* str2, size_t n) {
+ssize_t strncmp(const char* str1, const char* str2, size_t n) {
     if(!n)
         return 0;
 
@@ -27,7 +27,7 @@ size_t strncmp(char* str1, char* str2, size_t n) {
     return *str1-*str2;
 }
 
-size_t strlen(char* str) {
+size_t strlen(const char* str) {
     size_t len = 0;
     while(*(str++))
         len++;
@@ -35,16 +35,28 @@ size_t strlen(char* str) {
     return len;
 }
 
-char* strcpy(char* dst, char* src) {
+char* strcpy(char* dst, const char* src) {
+    char* orig_dst = dst;
+
+    while(*src) 
+        *(dst++) = *(src++);
+    
+    *dst = *src; // copy null byte
+    return orig_dst;
+}
+
+// strcpy but return the new end of dst, instead of dst
+char* strcpyend(char* dst, char* src) {
     while(*src)
         *(dst++) = *(src++);
+    
     *dst = *src; // copy null byte
     return dst;
 }
 
 // Copy to max n bytes of dst and pad left space with zeroes
 // May not produce null terminated strings if len(src) >= n
-char* strncpy(char* dst, char* src, size_t len) {
+char* strncpy(char* dst, const char* src, size_t len) {
     while(*src && len--) {
         *(dst++) = *(src++);
     }
@@ -54,10 +66,10 @@ char* strncpy(char* dst, char* src, size_t len) {
     return dst;
 }
 
-char* strchr(char* str, int ch) {
+char* strchr(const char* str, int ch) {
     do {
         if(*str == (char)ch)
-            return str;
+            return (char*) str;
     } while (*str++);
     return NULL;
 }
@@ -85,10 +97,20 @@ void strprefcpy(char* dst, char* src, size_t len) {
     *dst = '\0'; // always null terminate, but uses extra byte
 }
 
+// TODO: implement in assembly
+
 // Standard memcpy (now it works)
-void memcpy(void* dst, void* src, size_t size) {
+void* memcpy(void* dst, const void* src, size_t size) {
     char* _dst = dst;
-    char* _src = src;
+    const char* _src = src;
     while(size--)
         *_dst++ = *_src++;
+    return dst;
+}
+
+void* memset(void* dst, int val, size_t size) {
+    char* _dst = dst;
+    while(size--)
+        *_dst++ = (u8) val;
+    return dst;
 }

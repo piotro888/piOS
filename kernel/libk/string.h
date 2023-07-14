@@ -3,25 +3,26 @@
 
 #include <libk/types.h>
 
-size_t strcmp(char* str1, char* str2);
-size_t strncmp(char* str1, char* str2, size_t len);
+ssize_t strcmp(const char* str1, const char* str2);
+ssize_t strncmp(const char* str1, const char* str2, size_t len);
 
-size_t strlen(char* str);
+size_t strlen(const char* str);
 
-char* strcpy(char* dst, char* src);
-char* strncpy(char* dst, char* src, size_t len);
+char* strcpy(char* dst, const char* src);
+char* strncpy(char* dst, const char* src, size_t len);
 
-char* strchr(char* str, int ch);
+char* strchr(const char* str, int ch);
 
 void strcpynt(char* dst, char* src, size_t len);
 void strprefcpy(char* dst, char* src, size_t len);
+char* strcpyend(char* dst, char* src);
 
-void memcpy(void* dst, void* src, size_t size);
+void* memcpy(void* dst, const void* src, size_t size);
+void* memset(void* dst, int val, size_t size);
 
 /*
 TODO:
 void memmove();
-void memset();
 void memcmp();
 */
 
