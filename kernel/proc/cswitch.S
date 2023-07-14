@@ -5,75 +5,40 @@
 #endif
 
 #ifndef PAS_DIRS
-.global set_program_mem
+.global c_switch
 #endif
-; r0-data* r1-page r2-end_addr r3-off
-set_program_mem:
-    ; save pc on stack
-    sto r6, r7, 0
-    ; NOTE: We can't store flags on stack, because flags include paging, which we need to access stack to recover
-    srl r4, 1
-    mov r6, r4 ; save old flags
+; @param r0 ptr to registeres
+c_switch:
+    ; load arithmetic flags
+    ldo r1, r0, 18
+    srs r1, 4
 
-    ldi r1, 0b011 ; flags: SUP and MEMory PAGing
+    ; store pc to iret scratch register
+    ldo r1, r0, 16
+    srs r1, 3 
 
-    ori r1, r1, 0x1000 ; set page 0 as load to program memory
-    srs r1, 0x100 ; set page zero mapping
+    ; save r0 to scratch reg for later recovery (where normal memory cannot be accessed)
+    ldo r1, r0, 0
+    srs r1, 6
 
-    mov r4, r2
-    ; r3 - loop counter
-    cl_set_program_mem_loop:
-        ldo r2, r0, 0 ; load pointer - we need to access memory before setting memory override
-        ldi r1, 0b01011 ; flags: SUP, IMO - InstructionMemoryOverride no memory access allowed later, and MEMory PAGing
-        srs r1, 1
-        sto r2, r3, 0 ; store in new block pointer from r0
-        ldi r1, 0b10001 ; diable IMO, MEMPG and enable MEMSTD
-        srs r1, 1
-        adi r0, r0, 2 ; increment pointer (u16*)
-        adi r3, r3, 1 ; increment loop counter
-        cmp r3, r4 ; end addr
-        jle cl_set_program_mem_loop
+    ; registers must be recovered from memory before mem paging is enabled
+    ldo r1, r0, 2
+    ldo r2, r0, 4
+    ldo r3, r0, 6
+    ldo r4, r0, 8
+    ldo r5, r0, 10
+    ldo r6, r0, 12
+    ldo r7, r0, 14
 
-    srs r6, 1  ; recover old flags
+    ldi r0, 0x3 ; enable ram paging and priv. *remember about arithmetic flags!*; irq is set by iret
+    srs r0, 1
 
-    ldi r1, 0
-    srs r1, 0x10 ; reset page zero mapping
+    ldi r0, 0x1
+    srs r0, 2 ; set jtr rom paging
 
-    ldo r6, r7, 0 ; recover pc from stack
-    srs r6, 0 ; return
+    srl r0, 6 ; recover r0 saved before paging enable
 
-#ifndef PAS_DIRS
-.global set_ram_mem
-#endif
-; r0-data* r1-page r2-end_addr r3-off
-set_ram_mem:
-    sto r6, r7, 0 ; save pc on stack
-    srl r4, 1
-    mov r6, r4 ; save old flags
-    ori r4, r4, 0x2 ; same as before but do not set instr override
-    srs r4, 1
-
-    srs r1, 0x200 ; set page zero mapping
-
-    mov r1, r2
-
-   ; r3 - loop counter
-    cl_set_ram_mem_loop:
-        ldo r2, r0, 0 ; this is fine - buffer must not be in page0
-        sto r2, r3, 0 ; store in new block pointer from r0
-        adi r0, r0, 2 ; increment pointer (u16*)
-        adi r3, r3, 2 ; increment loop counter
-        cmp r3, r1 ; end addr
-        jle cl_set_ram_mem_loop
-
-    ; load old flags
-    srs r6, 1
-
-    ldi r1, 0
-    srs r1, 0x10 ; reset page zero mapping
-
-    ldo r6, r7, 0 ; recover pc from stack
-    srs r6, 0 ; return
+    irt ; jump to pc stored in sr3 and enable interrupts
 
 #ifndef PAS_DIRS
 .global set_mapping_from_struct
@@ -147,43 +112,6 @@ set_mapping_from_struct:
     srs r1, 0x10f
 
     srs r6, 0 ; return 
-
-#ifndef PAS_DIRS
-.global c_switch
-#endif
-; @param r0 ptr to registeres
-c_switch:
-    ; load arithmetic flags
-    ldo r1, r0, 18
-    srs r1, 4
-
-    ; store pc to iret scratch register
-    ldo r1, r0, 16
-    srs r1, 3 
-
-    ; save r0 to scratch reg for later recovery (where normal memory cannot be accessed)
-    ldo r1, r0, 0
-    srs r1, 6
-
-    ; registers must be recovered from memory before mem paging is enabled
-    ldo r1, r0, 2
-    ldo r2, r0, 4
-    ldo r3, r0, 6
-    ldo r4, r0, 8
-    ldo r5, r0, 10
-    ldo r6, r0, 12
-    ldo r7, r0, 14
-
-    ldi r0, 0x3 ; enable ram paging and priv. *remember about arithmetic flags!*; irq is set by iret
-    srs r0, 1
-
-    ldi r0, 0x1
-    srs r0, 2 ; set jtr rom paging
-
-    srl r0, 6 ; recover r0 saved before paging enable
-
-    irt ; jump to pc stored in sr3 and enable interrupts
-
 
 #ifndef PAS_DIRS
 .global enable_default_memory_paging_asm

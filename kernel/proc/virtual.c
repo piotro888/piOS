@@ -36,19 +36,22 @@ void memcpy_to_userspace(struct proc* proc, u16 ubuff, void* kbuff, size_t size)
 extern void set_ram_mem(u16* data, int page, size_t end_addr, size_t offset);
 void load_into_userspace(int page, void* data, size_t size, size_t offset) {
     ASSERT(offset+size <= PAGE_SIZE);
-    ASSERT(!(size&1));
-    set_ram_mem(data, page, size+offset-1, offset);
+
+    map_page_zero(page);
+    memcpy((void*)offset, data, size);
+    map_page_zero(ILLEGAL_PAGE);
+
+    //set_ram_mem(data, page, size+offset-1, offset);
     asm volatile ("":::"r0","r1","r2","r3","r4");
 }
 
-extern void set_program_mem(u16* data, int page, size_t end_addr, size_t offset);
 void load_into_userspace_program(int page, void* data, size_t size, size_t offset) {
-    ASSERT(offset+size <= PAGE_SIZE);
-    ASSERT(!(size&1));
-    // addr: 4b page 11b prog_address 1b h/l. page size is still 0x1000*16b
-    // exec: 4b page 12b prog_addr (but 12th of prg_addr is LSB of page while programming). Page must be <<1 while programming | 12th bit (see elf.c)
-    set_program_mem(data, page, size+offset-1, offset);
-    asm volatile ("":::"r0","r1","r2","r3","r4");
+    ASSERT(offset+size <= PAGE_SIZE); // able to load in DATA byte addresed page
+    ASSERT(!(size&0b11)); // aligned to full instructions
+
+    map_page_zero(page);
+    memcpy((void*)offset, data, size*2); //WHY????? TRY REMOVING IN A MM
+    map_page_zero(ILLEGAL_PAGE);
 }
 
 extern void set_mapping_from_struct(int* pages);

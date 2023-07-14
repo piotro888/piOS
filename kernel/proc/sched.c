@@ -21,8 +21,8 @@ int handling_interrupt = 0;
 int pid_now = 0;
 
 // FIXME: Request pages from virtual memory manager
-int first_free_page = 0x211;
-int first_free_prog_page = 0x11;
+int first_free_page = 0x211; // skip devices region!
+int first_free_prog_page = 0x11; // in prog page - MSB high (0x811 in practice)
 
 extern void __attribute__((noreturn)) idle_task();
 struct proc idle_struct;
@@ -78,6 +78,11 @@ void sched_pick_next() {
     }
 
     current_proc = ((struct proc*) last_element->val);
+    
+    #ifdef DEBUG
+        kprintf("sched pick %s\n", current_proc->name);
+        kprintf("pc=%x page0=>%x\n", current_proc->pc, current_proc->prog_pages[0]);
+    #endif
 }
 
 /* Prepare new kernel thread object and return its pid */
@@ -104,8 +109,7 @@ int make_kernel_thread(char* name, void __attribute__((noreturn)) (*entry)()) {
     p->regs[7] = 0xfffe;
     p->regs[5] = 0xfffe;
 
-    /* assembly BUG to resolve */
-    p->pc = (int)entry+1;
+    p->pc = (int)entry;
 
     // reset blocked status
     p->sema_blocked = NULL;

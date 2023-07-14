@@ -1,3 +1,4 @@
+#define DEBUG
 #include <fs/vfs.h>
 #include <proc/virtual.h>
 #include <proc/sched.h>
@@ -5,6 +6,7 @@
 #include <libk/log.h>
 #include <libk/math.h>
 #include <libk/types.h>
+#include <libk/string.h>
 
 #define ELFCLASS32  1
 #define ELFDATA2LSB 1
@@ -76,12 +78,11 @@ static char ph_buff[PH_SIZE];
 // address is memory address
 void load_to_page(int fd, size_t off, size_t end_addr, int page, int prog) {
     ASSERT(end_addr < PAGE_SIZE);
+    log_dbg("load off=%x end=%x page=%x prog=%x", off, end_addr, page, prog);
 
     size_t m_addr = off;
     while (m_addr <= end_addr) {
-        size_t read = vfs_read(fd, load_buff, MIN(LOAD_BUFF, (end_addr - m_addr + (prog ? 2 : 1))*(prog ? 2 : 1)));
-        if(prog)
-            read /= 2; // get size in memory address
+        size_t read = vfs_read(fd, load_buff, MIN(LOAD_BUFF, (end_addr - m_addr + 1)));
         ASSERT(read);
 
         if(prog)
@@ -106,22 +107,24 @@ void zero_page(size_t off, size_t len, int page) {
 }
 
 int phys_page_to_load(struct proc* proc, u16 vaddr, int prog) {
-    int virt_page = (vaddr >> 12);
+    unsigned int virt_page = (vaddr >> 12);
 
     if(prog) {
-        // this is program virtual LOAD address. LSB of virt_page is used as MSB of lower addr part after disabling
-        // programming mode. We are writing exec page mapping, where whole address is shifted >> 1 (including page).
-        // 0xxx z*12 -> xxxz z*11 (h/l sel); HIGH/LOW word select is handled by caller which supplies load addr.
+        // PC addressing works differently. We need to return page from DATA memory that maps INSTR memory.
+        
+        // INSTR PAGE entry is 11 bit wide MEMORY PAGE ENTRY 12 bit wide
+        // So, instruction page index is vaddr>>11
         if (proc->prog_pages[virt_page/2] == 0xff)
             proc->prog_pages[virt_page/2] = first_free_prog_page++;
-
-        // We shall return LOAD phys page, which is assigned phys page << 1 | MSB of normal address (which is shifted in LOAD to page section)
-        return (proc->prog_pages[virt_page / 2] << 1) | (virt_page & 1);
+        log_dbg("prog page virt_page=%x dst=%x ffp=%x pp[%x]=%x", virt_page, proc->prog_pages[virt_page], first_free_page, virt_page/2, proc->prog_pages[virt_page/2]);
+        
+        // We shall return corresponding DATA page, which is: assigned phys page << 1 | MSB of non-page part in INSTR space + INSTR region start page
+        return ((proc->prog_pages[virt_page / 2] << 1) | (virt_page & 1)) + (0x800<<1);
     } else {
         // load to ram mem is the same as read
         if (proc->mem_pages[virt_page] == 0xff)
             proc->mem_pages[virt_page] = first_free_page++;
-
+        log_dbg("mem page virt_page=%x dst=%x ffp=%x", virt_page, proc->mem_pages[virt_page], first_free_page);
         return proc->mem_pages[virt_page];
     }
 }
@@ -133,33 +136,32 @@ void load_ph(int fd, char* ph, struct proc* proc) {
 
         if(GET_U16(ph, PH_OFF_TYPE) == PT_LOAD) {
             u16 flags = GET_U16(ph, PH_OFF_FLAGS);
-            int prog = (flags & PF_X) > 0;
-            int mem_div = (prog ? 4 : 1);
+            int prog = (flags & PF_X) != 0;
 
             vfs_seek(fd, GET_U16(ph, PH_OFF_OFFSET), SEEK_SET);
-            size_t mem_size = GET_U16(ph, PH_OFF_FILESZ)/mem_div;
-            size_t zero_mem_size = GET_U16(ph, PH_OFF_MEMSZ)/mem_div;
+            size_t mem_size = GET_U16(ph, PH_OFF_FILESZ);
+            size_t zero_mem_size = GET_U16(ph, PH_OFF_MEMSZ);
 
             size_t vaddr = GET_U16(ph, PH_OFF_VADDR);
             size_t mem_start = vaddr;
             size_t end_addr = vaddr+mem_size-1;
             int pages = (mem_size+PAGE_SIZE-1)/PAGE_SIZE;
 
-            if(flags&PF_X) {
-                // if we are using program page load, we need to supply LOAD address. See comment in phys_page_to_load()
-                vaddr *= 2;
-                end_addr *= 2;
-            }
+            log_dbg("hdr: memsz %x vaddr %x %x mem_start %x end_addr %x", mem_size, vaddr, vaddr % PAGE_SIZE, mem_start, end_addr);
+            
+            // all adresses are in byte indexed memory (and are written in that manner). 1 instruction takes 4 bytes
+            // PAGE_SIZE is a limit of page map to load in all cases (byte addressed)
 
             if(mem_size) {
-                // Load single pages
-                load_to_page(fd, vaddr % PAGE_SIZE, MIN(PAGE_SIZE - 1, end_addr), phys_page_to_load(proc, vaddr, prog),
-                             prog);
+                // Load single pages - first page, then full pages, last page
+                load_to_page(fd, vaddr % PAGE_SIZE, MIN(PAGE_SIZE - 1, end_addr), phys_page_to_load(proc, vaddr, prog), prog);
                 vaddr += MIN(PAGE_SIZE - (GET_U16(ph, PH_OFF_VADDR) % PAGE_SIZE), end_addr + 1);
+
                 for (int j = 0; j < pages - 2; j++) {
                     load_to_page(fd, 0x000, PAGE_SIZE - 1, phys_page_to_load(proc, vaddr, prog), prog);
                     vaddr += PAGE_SIZE;
                 }
+                
                 if (pages > 1) {
                     load_to_page(fd, 0x000, end_addr % PAGE_SIZE, phys_page_to_load(proc, vaddr, prog), prog);
                     vaddr += (end_addr % PAGE_SIZE) + 1;
@@ -210,6 +212,8 @@ int elf_load(int fd) {
 
     // Load program
     struct proc* proc = sched_init_user_thread();
+
+    strcpy(proc->name, "uproc");
 
     proc->pc = GET_U16(buff, EH_OFF_ENTRY);
 
