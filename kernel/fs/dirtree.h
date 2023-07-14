@@ -10,7 +10,7 @@
 
 
 struct dir_t_node {
-    char name[100];
+    char name[32];
     struct dir_t_node* parent;
 
     struct list subdirs; // list of dir_t_node

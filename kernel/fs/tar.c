@@ -26,7 +26,7 @@ int convert_octal(char* octal)  {
 
 void sd_read_adapter(char* buff, size_t block) {
     struct sd_driver_req req = {
-            buff,
+            (u8*)buff,
             block,
             &request_wait
     };
@@ -47,9 +47,9 @@ int tar_get_fid(char* path) {
 ssize_t tar_read(struct fd_info* file, void* buff, size_t len) {
     sd_read_adapter(sector_buff, file->inode);
 
-    struct tar_t* header = sector_buff;
+    struct tar_t* header = (struct tar_t*) sector_buff;
     
-    size_t file_size = convert_octal(header->size);
+    size_t file_size = convert_octal((char*)header->size);
     if(file->seek >= file_size)
         return 0;
 
@@ -95,9 +95,9 @@ void tar_make_dir_tree() {
             panic("tarFS: invalid header");
         };
         
-        size_t size = convert_octal(header->size);
+        size_t size = convert_octal((char*)header->size);
         struct file_t* file = kmalloc(sizeof(struct file_t));
-        strcpy(file->name, header->name);
+        strcpy(file->name, (char*)header->name);
         file->size = size;
         file->type = FS_TYPE_FILE; // FIXME
         file->sector = sector;

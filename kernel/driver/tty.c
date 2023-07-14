@@ -15,7 +15,7 @@ static int tty_cursor_col, tty_cursor_row;
 #define TTY_BUFF_SIZE 255
 #define TTY_SUBMIT_BUFF 64
 #define LINE_BUFF_SIZE 128
-static char line_buff[LINE_BUFF_SIZE];
+static unsigned char line_buff[LINE_BUFF_SIZE];
 static int line_buff_len;
 
 static struct ringbuff read_rb;
@@ -206,9 +206,10 @@ void tty_puts(const char* str) {
         tty_putc(*str++);
 }
 
-int tty_fs_get_fid(char* path) { return 0; }
+int tty_fs_get_fid(char* path) { (void)path; return 0; }
 
 ssize_t tty_fs_read(struct fd_info* file, void* buff, size_t len) {
+    (void) file;
     spinlock_lock(&read_sl);
     while(ringbuff_length(&read_rb) < 1) {
         spinlock_unlock(&read_sl);
@@ -229,6 +230,7 @@ ssize_t tty_fs_read(struct fd_info* file, void* buff, size_t len) {
 }
 
 ssize_t tty_fs_read_nonblock(struct fd_info* file, void* buff, size_t len) {
+    (void) file;
     spinlock_lock(&read_sl);
     if(ringbuff_length(&read_rb) < 1) {
         read_notify = 1; // FIXME_LATER: set if !ioctl
@@ -252,11 +254,12 @@ ssize_t tty_fs_read_nonblock(struct fd_info* file, void* buff, size_t len) {
 }
 
 ssize_t tty_fs_write(struct fd_info* file, void* buff, size_t len) {
+    (void) file;
     spinlock_lock(&write_sl);
     size_t write_len = ringbuff_write(&write_rb, buff, len);
     while (write_len < len) {
         semaphore_down(&write_not_full);
-        write_len += ringbuff_write(&write_rb, (char*)buff+write_len, len-write_len);
+        write_len += ringbuff_write(&write_rb, (u8*)buff+write_len, len-write_len);
     }
 
     spinlock_unlock(&write_sl);
@@ -265,6 +268,7 @@ ssize_t tty_fs_write(struct fd_info* file, void* buff, size_t len) {
 }
 
 ssize_t tty_fs_write_nonblock(struct fd_info* file, void* buff, size_t len) {
+    (void) file;
     spinlock_lock(&write_sl);
     if(ringbuff_length(&write_rb)+len > TTY_BUFF_SIZE) {
         write_notify = 1;
@@ -281,7 +285,7 @@ ssize_t tty_fs_write_nonblock(struct fd_info* file, void* buff, size_t len) {
 
 void __attribute__((noreturn)) tty_driver_thread() {
     /* submits tty input in order from fs buffer */
-    char buff[TTY_SUBMIT_BUFF];
+    unsigned char buff[TTY_SUBMIT_BUFF];
     for (;;) {
         // no spinlock is needed - only this thread is reading from ringbuff
         while (!ringbuff_length(&write_rb))

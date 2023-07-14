@@ -1,6 +1,6 @@
 /* 
  * piOS kernel entry point
- * (C) 2021-2022 by Piotr Wegrzyn
+ * (C) 2021-2023 by Piotr Wegrzyn
 */
 
 #include <art.h>
@@ -8,9 +8,11 @@
 #include <driver/spi.h>
 #include <driver/tty.h>
 #include <fs/kbd.h>
+#include <fs/sio.h>
 #include <fs/tar.h>
 #include <fs/vfs.h>
 #include <irq/timer.h>
+#include <proc/elf.h>
 #include <proc/sched.h>
 #include <proc/virtual.h>
 #include <sys/sysd.h>
@@ -19,6 +21,7 @@
 #include <libk/kmalloc.h>
 #include <libk/kprintf.h>
 #include <libk/log.h>
+#include <libk/assert.h>
 
 void __attribute__((noreturn)) init_stage1();
 
@@ -26,10 +29,12 @@ void __attribute__((noreturn)) init_stage1();
 __attribute__((used))
 void _kstart() {
     enable_default_memory_paging();
+
     //log_set_target(LOG_TARGET_TTY, 1);
     log_set_target(LOG_TARGET_SERIAL, 1);
-    //tty_init_basic();
+
     log_early_puts("\033[92mpios\033[97m");
+
     log_early_puts(" kernel booting\n");
     log_early_putc('\n');
     kprintf("initializing kernel heap\n");
@@ -68,19 +73,26 @@ void __attribute__((noreturn)) init_stage1() {
     // Continue kernel boot in threaded environment
     log("mounting devices in vfs");
     kbd_vfs_init();
+    sio_mnt_vfs();
     //tty_mnt_vfs();
 
     log("registering system threads");
     sysd_init();
     sysres_init();
-    //sd_register_thread();
+    sd_register_thread();
 
-    // log("mounting SD card TAR filesystem");
-    // tar_make_dir_tree();
-    // tar_mount_sd();
+    log("mounting SD card TAR filesystem");
+    tar_make_dir_tree();
+    tar_mount_sd();
 
     log("%uB kernel heap, %ukB paged memory free", mem_free_size(), 0);
     log("init stage 1 done");
+
+    int fd = vfs_open("/sd/bin/example");
+    log("fd: %d", fd);
+    ASSERT(fd >= 0);
+
+    elf_load(fd);
 
     semaphore_init(&sleep);
     semaphore_down(&sleep);

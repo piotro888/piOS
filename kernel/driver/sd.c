@@ -3,8 +3,10 @@
 #include <driver/spi.h>
 #include <libk/kprintf.h>
 #include <libk/con/blockq.h>
+#include <libk/log.h>
 #include <proc/sched.h>
 #include <panic.h>
+
 
 #define SD_DEVICE_NO 0
 
@@ -24,7 +26,7 @@
 #define STATUS_IDLE 0x1
 #define STATUS_ILLEGAL_CMD 0x5
 
-#define SD_RESP_TIMEOUT 8
+#define SD_RESP_TIMEOUT 16
 #define SD_INIT_TIMEOUT 200
 
 #define SD_READ_TOKEN 0xFE
@@ -141,7 +143,7 @@ void sd_init() {
     uint8_t rb[5];
 
     spi_cs_set(1, SD_DEVICE_NO); // disable chip select
-    for(int i=0; i<74; i++) {
+    for(int i=0; i<80; i++) {
         spi_transmit(0xFF);
     }
     spi_cs_set(0, SD_DEVICE_NO);

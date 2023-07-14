@@ -20,7 +20,7 @@ void serial_direct_putc(char c) {
 
     while (!((*STATUS_REG) & STATUS_TX_READY));
 
-   *TX_REG = c; 
-   map_page_zero(ILLEGAL_PAGE);
+    *TX_REG = c;
+    map_page_zero(ILLEGAL_PAGE);
 }
 

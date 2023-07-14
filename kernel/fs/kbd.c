@@ -20,10 +20,12 @@ static struct semaphore data_available;
 static int read_notify = 0;
 
 int kbd_get_fid(char* path) {
+    (void) path;
     return 0; // we have only one file
 }
 
 ssize_t kbd_read(struct fd_info* file, void* buff, size_t len) {
+    (void) file;
     spinlock_lock(&read_spinlock);
     while(!ringbuff_length(&c_buff)) {
         spinlock_unlock(&read_spinlock);
@@ -43,6 +45,7 @@ ssize_t kbd_read(struct fd_info* file, void* buff, size_t len) {
 }
 
 ssize_t kbd_read_nonblock(struct fd_info* file, void* buff, size_t len) {
+    (void) file;
     spinlock_lock(&read_spinlock);
     if(!ringbuff_length(&c_buff)) {
         read_notify = 1; // FIXME_LATER: ioctl
@@ -67,7 +70,7 @@ ssize_t kbd_read_nonblock(struct fd_info* file, void* buff, size_t len) {
 }
 
 void kbd_vfs_submit_char(char c) {
-    ringbuff_force_write(&c_buff, &c, 1);
+    ringbuff_force_write(&c_buff, (unsigned char*)&c, 1);
 
     semaphore_binary_up(&data_available);
     if(read_notify) {
