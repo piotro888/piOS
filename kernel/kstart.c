@@ -1,7 +1,8 @@
 /* 
  * piOS kernel entry point
  * (C) 2021-2023 by Piotr Wegrzyn
-*/
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
 
 #include <art.h>
 #include <driver/sd.h>
