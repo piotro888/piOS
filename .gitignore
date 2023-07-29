@@ -7,3 +7,8 @@ base/
 notes/
 
 *.tar
+*.o
+*.a
+
+compile_base/bin
+compile_base/usr/include/
