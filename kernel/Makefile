@@ -3,9 +3,9 @@ LD := ~/llvm-project/rbuild/bin/ld.lld
 AS := ~/llvm-project/rbuild/bin/llvm-mc
 OBJCOPY := ~/llvm-project/rbuild/bin/llvm-objcopy
 
-CFLAGS := -target pcpu -integrated-as -I. -Wall -Wextra -pedantic -fno-signed-char
+CFLAGS := -target pcpu-unknown-none -integrated-as -I. -Wall -Wextra -pedantic -fno-signed-char -O2 -ffreestanding -nostdlib -nostdinc
 CFLAGS_WNO :=  -Wno-strict-prototypes -Wno-language-extension-token -Wno-gnu-binary-literal -Wno-language-extension-token -Wno-gnu-zero-variadic-macro-arguments
-SFLAGS := --arch PCPU --filetype=obj
+SFLAGS := --arch pcpu --filetype=obj
 LFLAGS := -T link.ld
 
 

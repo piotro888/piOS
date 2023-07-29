@@ -3,7 +3,7 @@ LD := ~/llvm-project/rbuild/bin/ld.lld
 AS := ~/llvm-project/rbuild/bin/llvm-mc
 
 CFLAGS := -target pcpu -integrated-as -I. -fno-signed-char -Wall -Wextra -pedantic -I../../lib/libpios
-SFLAGS := --arch PCPU --filetype=obj
+SFLAGS := --arch pcpu --filetype=obj
 LFLAGS := -T link.ld
 
 NAME := example
