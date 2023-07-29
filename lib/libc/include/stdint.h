@@ -1,5 +1,5 @@
-#ifndef LIBC_STDINT
-#define LIBC_STDINT
+#ifndef __STDINT_H
+#define __STDINT_H
 
 typedef signed char int8_t; 
 typedef int int16_t; 

@@ -7,14 +7,15 @@ LIBC_FLAGS := -D __LIBC__ -D __LIBC_USERSPACE__
 LIBC_K_FLAGS := -D __LIBC__ -D __LIBC_KERNEL__
 
 
-_SOURCES=\
+SOURCES_U=\
+	string.c
+
+SOURCES_K=\
 	string.c	
 
 
-OBJS=$(patsubst %, build/%.o, $(_SOURCES))
-OBJS_K=$(patsubst %, build/%_k.o, $(_SOURCES))
-SOURCES=$(patsubst %, src/%, $(_SOURCES))
-
+OBJS=$(patsubst %, build/%.o, $(SOURCES_U))
+OBJS_K=$(patsubst %, build/%_k.o, $(SOURCES_K))
 
 .PHONY: all clean libc libc_k
 

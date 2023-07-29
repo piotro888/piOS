@@ -1,5 +1,5 @@
-#ifndef LIBC_STDDEF
-#define LIBC_STDDEF
+#ifndef __STDDEF_H
+#define __STDDEF_H
 
 #include "stdint.h"
 
