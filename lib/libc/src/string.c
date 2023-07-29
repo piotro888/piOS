@@ -16,8 +16,10 @@ char* strcpy(char* restrict dest, const char* restrict src) {
 char* strncpy(char* restrict dest, const char* restrict src, size_t count) {
     char* orig_dest = dest;
 
-    while(*src && count--) 
+    while(*src && count) {
         *(dest++) = *(src++);
+        count--;
+    } 
     
     // if termination is in count range, it is filled here
     while(count--)
