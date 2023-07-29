@@ -1,8 +1,8 @@
 #include "kprintf.h"
 #include "log.h"
 
+#include <string.h>
 #include <libk/log.h>
-#include <libk/string.h>
 
 #define PRINTF_TTY_BUFFER_SIZE 512
 
@@ -63,7 +63,8 @@ int vsprintf(char* buff, const char* str, va_list vlist) {
                 case 's':
                     str++;
                     char* s_param = va_arg(vlist, char*);
-                    buff = strcpyend(buff, s_param);
+                    strcpy(buff, s_param);
+                    buff += strlen(s_param);
                     break;
                 case 'c':
                     str++;
@@ -83,7 +84,8 @@ int vsprintf(char* buff, const char* str, va_list vlist) {
                                 int l = _utoa(alp, l_part, 16);
                                 for(int i=0; i < 4-l; i++)
                                     *buff++='0';
-                                buff = strcpyend(buff, alp);
+                                strcpy(buff, alp);
+                                buff += l;
                             } else {
                                 buff += _utoa(buff, l_part, 16);
                             }

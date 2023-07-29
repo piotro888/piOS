@@ -1,7 +1,7 @@
 #include "dirtree.h"
+#include <string.h>
 #include <libk/assert.h>
 #include <libk/list.h>
-#include <libk/string.h>
 #include <libk/kprintf.h>
 #include <libk/kmalloc.h>
 #include <fs/tar.h>
@@ -45,8 +45,10 @@ void dir_tree_add_path(struct dir_t_node* root, struct file_t* file) {
             continue;
 
         struct dir_t_node* new_node = kmalloc(sizeof(struct dir_t_node));
-
-        strprefcpy(new_node->name, path, (next_slash-path)+1);
+        
+        size_t prefix_len = (next_slash-path)+1;
+        strncpy(new_node->name, path, prefix_len);
+        new_node->name[prefix_len+1] = '\0';
 
         new_node->parent = node;
         list_init(&new_node->subdirs);

@@ -34,7 +34,6 @@ SOURCES=\
 	libk/list.c \
 	libk/log.c \
 	libk/ringbuff.c \
-	libk/string.c \
 	libk/con/blockq.c \
 	libk/con/semaphore.c \
 	libk/con/spinlock.c \
@@ -44,6 +43,9 @@ SOURCES=\
 	proc/virtual.c\
 	sys/sysd.c \
 	sys/sysres.c
+
+SRC_LIBS=../lib/libc/build/libc_k.a
+INC_LIBS=-I../lib/libc/include
 
 
 OBJS=$(patsubst %, build/%.o, $(SOURCES))
@@ -60,12 +62,12 @@ build/kernel_text.bin: build/kernel.elf
 build/kernel_data.bin: build/kernel.elf
 	$(OBJCOPY) --dump-section .data=$@ $<
 
-build/kernel.elf: $(OBJS)
+build/kernel.elf: $(OBJS) $(SRC_LIBS)
 	$(LD) $^ -o $@ $(LFLAGS)
 
 build/%.c.o : %.c
 	@mkdir -p $(@D)
-	$(CC) $< -o $@ -c $(CFLAGS) $(CFLAGS_WNO)
+	$(CC) $< -o $@ -c $(CFLAGS) $(CFLAGS_WNO) $(INC_LIBS)
 
 build/%.s.o: %.s
 	@mkdir -p $(@D)

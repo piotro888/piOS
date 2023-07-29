@@ -1,6 +1,6 @@
 #include "tar.h"
+#include <string.h>
 #include <libk/kprintf.h>
-#include <libk/string.h>
 #include <libk/kmalloc.h>
 #include <fs/dirtree.h>
 #include <fs/vfs.h>

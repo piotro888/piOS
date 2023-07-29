@@ -1,9 +1,9 @@
 #include "vfs.h"
 
+#include <string.h>
 #include <libk/assert.h>
 #include <libk/list.h>
 #include <libk/kmalloc.h>
-#include <libk/string.h>
 #include <proc/proc.h>
 #include <proc/sched.h>
 
@@ -212,7 +212,9 @@ struct vfs_node* vnode_tree_create(char* path) {
         new_node->name = kmalloc(next_tok-path+2);
         new_node->parent = node;
         new_node->handles = NULL;
-        strprefcpy(new_node->name, dirname, next_tok-dirname+1);
+        size_t prefix_len = next_tok-dirname+1;
+        strncpy(new_node->name, dirname, prefix_len);
+        new_node->name[prefix_len+1] = '\0';
         list_init(&new_node->subdirs);
         list_append(&node->subdirs, new_node);
         dirname = next_tok+1;

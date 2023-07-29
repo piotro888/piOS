@@ -1,7 +1,7 @@
 #include "sched.h"
 
+#include <string.h>
 #include <libk/kmalloc.h>
-#include <libk/string.h>
 #include <libk/list.h>
 #include <libk/assert.h>
 

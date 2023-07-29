@@ -1,9 +1,9 @@
 #include "log.h"
 
+#include <string.h>
 #include <driver/tty.h>
 #include <driver/serial.h>
 #include <libk/kprintf.h>
-#include <libk/string.h>
 #include <proc/sched.h>
 #include <irq/timer.h>
 

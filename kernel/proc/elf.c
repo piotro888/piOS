@@ -1,4 +1,5 @@
 #define DEBUG
+#include <string.h>
 #include <fs/vfs.h>
 #include <proc/virtual.h>
 #include <proc/sched.h>
@@ -6,7 +7,6 @@
 #include <libk/log.h>
 #include <libk/math.h>
 #include <libk/types.h>
-#include <libk/string.h>
 
 #define ELFCLASS32  1
 #define ELFDATA2LSB 1
@@ -154,7 +154,7 @@ void load_ph(int fd, char* ph, struct proc* proc) {
 
             if(mem_size) {
                 // Load single pages - first page, then full pages, last page
-                load_to_page(fd, vaddr % PAGE_SIZE, MIN(PAGE_SIZE - 1, end_addr), phys_page_to_load(proc, vaddr, prog), prog);
+                load_to_page(fd, vaddr % PAGE_SIZE, MIN(PAGE_SIZE - 1, end_addr-vaddr), phys_page_to_load(proc, vaddr, prog), prog);
                 vaddr += MIN(PAGE_SIZE - (GET_U16(ph, PH_OFF_VADDR) % PAGE_SIZE), end_addr + 1);
 
                 for (int j = 0; j < pages - 2; j++) {

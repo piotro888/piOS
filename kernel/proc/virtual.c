@@ -1,7 +1,7 @@
 #include "virtual.h"
 
+#include <string.h>
 #include <libk/assert.h>
-#include <libk/string.h>
 #include <libk/math.h>
 #include <proc/sched.h>
 
