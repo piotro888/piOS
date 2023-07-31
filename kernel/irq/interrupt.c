@@ -14,9 +14,30 @@
 #define SFLAG_SYSCALL 0x2
 #define SFLAG_SEGFAULT 0x8
 
+static int processing_interrupt = 0;
+
 /* Interrupt handler called from irq.s */
 __attribute__((used))
 void interrupt(const int state) {
+    if (processing_interrupt) {
+        // detect unexpected faults in interrupt processing
+        __asm__ volatile (
+            "__double_fault:\n"
+            "ldi r0, 0xAA\n"
+            "jmp __double_fault\n"
+        );
+        __builtin_unreachable();
+    }
+    processing_interrupt = 1;
+
+    if(!scheduling_enabled) {
+        enable_default_memory_paging();
+        if (state & SFLAG_SYSCALL)
+            kprintf("EARLY KERNEL SEGFAULT!");
+        kprintf("pc: %x\n",  *(int*)(state+28-20));
+        panic("Kernel interupted before scheduling enabled");
+    }
+
     // save thread state
     for(int i=0; i<8; i++)
         current_proc->regs[i] = *(int*)(state+28-(4+2*i));
@@ -67,6 +88,8 @@ void interrupt(const int state) {
         sys_ticks++;
         should_switch_thread = 1;
     }
+
+    processing_interrupt = 0;
 
     if(scheduling_enabled) {
         if(should_switch_thread)
