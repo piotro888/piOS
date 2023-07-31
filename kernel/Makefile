@@ -4,8 +4,8 @@ AS := ~/llvm-project/rbuild/bin/llvm-mc
 OBJCOPY := ~/llvm-project/rbuild/bin/llvm-objcopy
 UPLOAD := python3 ../tools/send.py
 
-CFLAGS := -target pcpu-unknown-none -integrated-as -I. -Wall -Wextra -pedantic -fno-signed-char -O2 -ffreestanding -nostdlib -nostdinc
-CFLAGS_WNO :=  -Wno-strict-prototypes -Wno-language-extension-token -Wno-gnu-binary-literal -Wno-language-extension-token -Wno-gnu-zero-variadic-macro-arguments
+CFLAGS := -target pcpu-unknown-none -integrated-as -I. -O2 -fno-signed-char  -ffreestanding -nostdlib -nostdinc -fno-zero-initialized-in-bss -fno-delete-null-pointer-checks
+CFLAGS_W := -Wall -Wextra -pedantic -Wno-strict-prototypes -Wno-language-extension-token -Wno-gnu-binary-literal -Wno-language-extension-token -Wno-gnu-zero-variadic-macro-arguments
 SFLAGS := --arch pcpu --filetype=obj
 LFLAGS := -T link.ld
 
