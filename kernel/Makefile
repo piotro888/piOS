@@ -2,6 +2,7 @@ CC := ~/llvm-project/rbuild/bin/clang
 LD := ~/llvm-project/rbuild/bin/ld.lld
 AS := ~/llvm-project/rbuild/bin/llvm-mc
 OBJCOPY := ~/llvm-project/rbuild/bin/llvm-objcopy
+UPLOAD := python3 ../tools/send.py
 
 CFLAGS := -target pcpu-unknown-none -integrated-as -I. -Wall -Wextra -pedantic -fno-signed-char -O2 -ffreestanding -nostdlib -nostdinc
 CFLAGS_WNO :=  -Wno-strict-prototypes -Wno-language-extension-token -Wno-gnu-binary-literal -Wno-language-extension-token -Wno-gnu-zero-variadic-macro-arguments
@@ -50,7 +51,7 @@ INC_LIBS=-I../lib/libc/include
 
 OBJS=$(patsubst %, build/%.o, $(SOURCES))
 
-.PHONY: all clean bin
+.PHONY: all clean bin upload
 
 all: bin
 
@@ -83,3 +84,6 @@ build/%.S: %.S
 
 clean:
 	rm -rf build/
+
+upload: build/kernel_text.bin build/kernel_data.bin
+	$(UPLOAD) $^
