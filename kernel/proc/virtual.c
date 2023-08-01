@@ -74,7 +74,7 @@ inline void map_page_zero(int page) {
 
     asm volatile (
         "srs %0, 0x200"
-        :: "r" (page)
+        :: "r" (page) : "memory"
     );
 }
 
