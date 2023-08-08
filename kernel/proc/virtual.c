@@ -5,8 +5,8 @@
 #include <libk/math.h>
 #include <proc/sched.h>
 
-#define PAGE_PART(addr) ((addr)>>12)
-#define ADDR_PART(addr) ((addr)&0x0fff)
+#define PAGE_PART VIRT_PAGE_PART
+#define ADDR_PART VIRT_LOCAL_PART
 #define PHYS_PAGE(addr, page_table) ((page_table)[PAGE_PART(addr)])
 
 void memcpy_from_userspace(void* kbuff, struct proc* proc, u16 ubuff, size_t size) {
@@ -66,6 +66,16 @@ void switch_to_userspace(struct proc* p) {
     asm volatile ("":::"r1"); // clobber r1
 
     c_switch(p->regs);
+}
+
+unsigned int get_proc_addr_page(int pid, void* addr) {
+    if (!pid)
+        return 0x200 + PAGE_PART(addr);
+    
+    struct proc* proc = proc_by_pid(pid);
+    if (!proc)
+        return ILLEGAL_PAGE;
+    return proc->mem_pages[PAGE_PART(addr)];
 }
 
 inline void map_page_zero(int page) {

@@ -4,7 +4,9 @@
 #include <libk/kprintf.h>
 #include <libk/con/blockq.h>
 #include <libk/log.h>
+#include <libk/math.h>
 #include <proc/sched.h>
+#include <proc/virtual.h>
 #include <panic.h>
 
 
@@ -98,7 +100,7 @@ void sd_hc_init() {
         panic("driver/sd: illegal response to cmd16");
 }
 
-void sd_read_block(uint8_t* buff, uint16_t addr) {
+void sd_read_block(unsigned int pid, uint8_t* vbuff, uint16_t addr, size_t buff_size, size_t buff_offset) {
     uint8_t r;
 
     sd_command(CMD17, 0, addr, 0, &r, 1);
@@ -113,9 +115,17 @@ void sd_read_block(uint8_t* buff, uint16_t addr) {
         if(r != 0xFF && r != SD_READ_TOKEN)
             panic("driver/sd: data before read token"); // if that is true sd_command might consumed token
     }
-
+    
+    // TODO: SPI DMA
     for(int i=0; i<SECTOR_SIZE; i++) {
-        *(buff++) = spi_receive();
+        u8 byte = spi_receive();
+        if (i >= buff_offset && i < buff_size+buff_offset) { 
+            // TODO: we always need to read full blocks, so it would make sense to cache some unread blocks,
+            // and possibly request next block here, if current was read to the end. Also more like block device
+            map_page_zero(get_proc_addr_page(pid, vbuff));
+            *(u8*)(VIRT_LOCAL_PART(vbuff)) = byte;
+            vbuff++;
+        }
     }
 
     // not using CRC, only cosuming bits
@@ -129,7 +139,7 @@ void sd_driver_loop() {
     for(;;) {
         struct sd_driver_req req;
         blockq_pop(&requests, &req);
-        sd_read_block(req.buff, req.block_nr);
+        sd_read_block(req.pid, req.vbuff, req.block_nr, req.length, req.offset);
         semaphore_up(req.notify_done);
     }
 }

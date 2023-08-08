@@ -38,7 +38,7 @@ struct file_t {
 #define ETOOMANYFILES 6
 #define EINVALIDFD 7
 
-void tar_make_dir_tree();
+void tar_init();
 void tar_mount_sd();
 
 #endif

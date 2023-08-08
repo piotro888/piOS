@@ -17,7 +17,6 @@
 #include <proc/sched.h>
 #include <proc/virtual.h>
 #include <sys/sysd.h>
-#include <sys/sysres.h>
 
 #include <libk/kmalloc.h>
 #include <libk/kprintf.h>
@@ -79,11 +78,10 @@ void __attribute__((noreturn)) init_stage1() {
 
     log("registering system threads");
     sysd_init();
-    sysres_init();
     sd_register_thread();
 
     log("mounting SD card TAR filesystem");
-    tar_make_dir_tree();
+    tar_init();
     tar_mount_sd();
 
     log("%uB kernel heap, %ukB paged memory free", mem_free_size(), 0);

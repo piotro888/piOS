@@ -2,31 +2,30 @@
 #include <driver/vga.h>
 #include <libk/types.h>
 #include <libk/ringbuff.h>
+#include <libk/kmalloc.h>
 #include <libk/con/semaphore.h>
 #include <libk/con/spinlock.h>
 #include <libk/math.h>
 #include <libk/assert.h>
 #include <fs/vfs.h>
-#include <proc/sched.h>
-#include <sys/sysres.h>
+#include <proc/sched.h>\
 
 static int tty_cursor_col, tty_cursor_row;
 
 #define TTY_BUFF_SIZE 255
-#define TTY_SUBMIT_BUFF 64
+#define TTY_SUBMIT_BUFF 128
 #define LINE_BUFF_SIZE 128
 static unsigned char line_buff[LINE_BUFF_SIZE];
 static int line_buff_len;
 
 static struct ringbuff read_rb;
-static struct semaphore read_data_signal;
-static struct spinlock read_sl;
 
-static struct ringbuff write_rb;
-static struct semaphore write_data_signal, write_not_full;
-static struct spinlock write_sl;
+static struct semaphore list_read_sema, read_data_signal;
+static struct list req_read_list;
+static struct semaphore list_write_sema, insert_lock;
+static struct list req_write_list;
 
-static int read_notify = 0, write_notify = 0;
+static size_t read_queue_buff = 0;
 
 #define IS_PRINTABLE(x) ((x) >= 32 && (x) <= 126)
 
@@ -42,10 +41,6 @@ void tty_submit_line_buff() {
     ringbuff_write(&read_rb, line_buff, line_buff_len);
     line_buff_len = 0;
     semaphore_binary_up(&read_data_signal);
-    if(read_notify) {
-        read_notify = 0;
-        sysres_notify();
-    }
 }
 
 void tty_linebuff_erase() {
@@ -208,112 +203,79 @@ void tty_puts(const char* str) {
 
 int tty_fs_get_fid(char* path) { (void)path; return 0; }
 
-ssize_t tty_fs_read(struct fd_info* file, void* buff, size_t len) {
-    (void) file;
-    spinlock_lock(&read_sl);
-    while(ringbuff_length(&read_rb) < 1) {
-        spinlock_unlock(&read_sl);
-        semaphore_down(&read_data_signal);
-        spinlock_lock(&read_sl);
-    }
-
-    size_t rl = ringbuff_read(&read_rb, buff, len);
-
-    if(ringbuff_length(&read_rb)) {
-        semaphore_binary_up(&read_data_signal);
-        if(read_notify)
-            sysres_notify();
-    }
-
-    spinlock_unlock(&read_sl);
-    return rl;
-}
-
-ssize_t tty_fs_read_nonblock(struct fd_info* file, void* buff, size_t len) {
-    (void) file;
-    spinlock_lock(&read_sl);
-    if(ringbuff_length(&read_rb) < 1) {
-        read_notify = 1; // FIXME_LATER: set if !ioctl
-        spinlock_unlock(&read_sl);
-        return -EWOULDBLOCK;
-    }
-    if(!len)
-        return 0;
-
-    size_t rl = ringbuff_read(&read_rb, buff, len);
-
-    if(ringbuff_length(&read_rb)) {
-        semaphore_binary_up(&read_data_signal);
-        if(read_notify) {
-            read_notify = 0;
-            sysres_notify();
-        }
-    }
-    spinlock_unlock(&read_sl);
-    return rl;
-}
-
-ssize_t tty_fs_write(struct fd_info* file, void* buff, size_t len) {
-    (void) file;
-    spinlock_lock(&write_sl);
-    size_t write_len = ringbuff_write(&write_rb, buff, len);
-    while (write_len < len) {
-        semaphore_down(&write_not_full);
-        write_len += ringbuff_write(&write_rb, (u8*)buff+write_len, len-write_len);
-    }
-
-    spinlock_unlock(&write_sl);
-    semaphore_binary_up(&write_data_signal);
-    return write_len;
-}
-
-ssize_t tty_fs_write_nonblock(struct fd_info* file, void* buff, size_t len) {
-    (void) file;
-    spinlock_lock(&write_sl);
-    if(ringbuff_length(&write_rb)+len > TTY_BUFF_SIZE) {
-        write_notify = 1;
-        spinlock_unlock(&write_sl);
-        return -EWOULDBLOCK;
-    }
-    size_t write_len = ringbuff_write(&write_rb, buff, len);
-    ASSERT(write_len == len);
-
-    spinlock_unlock(&write_sl);
-    semaphore_binary_up(&write_data_signal);
-    return write_len;
-}
-
-void __attribute__((noreturn)) tty_driver_thread() {
-    /* submits tty input in order from fs buffer */
-    unsigned char buff[TTY_SUBMIT_BUFF];
+void __attribute__((noreturn)) tty_driver_thread_write() {
     for (;;) {
-        // no spinlock is needed - only this thread is reading from ringbuff
-        while (!ringbuff_length(&write_rb))
-            semaphore_down(&write_data_signal);
+        semaphore_down(&list_write_sema);
+        struct vfs_async_req_t* req = req_write_list.first->val;
 
-        size_t read_len = ringbuff_read(&write_rb, buff, TTY_SUBMIT_BUFF);
-        semaphore_binary_up(&write_not_full);
-        if(write_notify) {
-            write_notify = 0;
-            sysres_notify();
-        }
-
-        for(size_t i=0; i<read_len; i++)
-            tty_putc(buff[i]);
+        req->size = MIN(req->size, TTY_SUBMIT_BUFF);
+        for (int i=0; i<req->size; i++)
+            tty_putc(((char*)req->vbuff)[i]);
+        vfs_async_finalize(req, req->size);
     }
+}
+
+void __attribute__((noreturn)) tty_driver_thread_read() {
+    for (;;) {
+        semaphore_down(&list_read_sema);
+        struct vfs_async_req_t* req = req_read_list.first->val;
+
+        req->size = MIN(req->size, TTY_BUFF_SIZE);
+        while (!ringbuff_length(&read_rb)) {
+            ASSERT(!(req->flags & VFS_ASYNC_FLAG_WANT_WOULDBLOCK));
+            semaphore_down(&read_data_signal);
+        }
+        size_t res = ringbuff_read(&read_rb, req->vbuff, req->size);
+        vfs_async_finalize(req, res);
+    }
+}
+
+ssize_t tty_submit_req(struct vfs_async_req_t* req) {
+    semaphore_down(&insert_lock);
+    if (req->type == VFS_ASYNC_TYPE_READ) {
+        if (req->flags & VFS_ASYNC_FLAG_WANT_WOULDBLOCK && read_queue_buff >= ringbuff_length(&read_rb)) {
+            semaphore_up(&insert_lock);
+            return -EWOULDBLOCK;
+        }
+        list_append(&req_read_list, req);
+        semaphore_up(&list_write_sema);
+    } else if (req->type == VFS_ASYNC_TYPE_WRITE) {
+        list_append(&req_write_list, req);
+        semaphore_up(&list_write_sema);
+    } else {
+        semaphore_up(&insert_lock);
+        return -ENOSUP;
+    }
+    semaphore_up(&insert_lock);
+    return 0;
 }
 
 void tty_direct_write(char* buff, size_t len) {
-    tty_fs_write(NULL, buff, len);
+    struct semaphore* lock = kmalloc(sizeof(struct semaphore));
+    struct vfs_async_req_t* req = kmalloc(sizeof(struct vfs_async_req_t));
+
+    req->type = VFS_ASYNC_TYPE_WRITE;
+    req->pid = 0;
+    req->req_id = 0;
+    req->callback = NULL;
+    req->vbuff = buff;
+    req->size = len;
+    req->flags = 0;
+    req->fin_sema = lock;
+    semaphore_init(lock);
+    
+    tty_submit_req(req);
+    semaphore_down(lock); // maybe no need to lock, only kfree on callback?
+
+    kfree(req);
+    kfree(lock);
 }
 
 void tty_mnt_vfs() {
     const struct vfs_reg reg = {
             tty_fs_get_fid,
-            tty_fs_read,
-            tty_fs_write,
-            tty_fs_read_nonblock,
-            tty_fs_write_nonblock,
+            tty_submit_req,
+            VFS_REG_FLAG_KERNEL_BUFFER_ONLY
     };
     vfs_mount("/dev/tty", &reg);
 }
@@ -331,14 +293,17 @@ void tty_init_basic() {
 // Initialize TTY driver over FS device. Requires tty_init_basic to be called beforehand
 void tty_init_driver() {
     ringbuff_init(&read_rb, TTY_BUFF_SIZE);
+    
+    semaphore_init(&insert_lock);
+    semaphore_up(&insert_lock);
+    semaphore_init(&list_read_sema);
+    semaphore_init(&list_write_sema);
     semaphore_init(&read_data_signal);
-    spinlock_init(&read_sl);
-    ringbuff_init(&write_rb, TTY_BUFF_SIZE);
-    semaphore_init(&write_data_signal);
-    semaphore_init(&write_not_full);
-    spinlock_init(&write_sl);
+    list_init(&req_read_list);
+    list_init(&req_write_list);
 }
 
 void tty_register_thread() {
-    make_kernel_thread("drv_tty", tty_driver_thread);
+    make_kernel_thread("drv::tty::read", tty_driver_thread_read);
+    make_kernel_thread("drv::tty::write", tty_driver_thread_write);
 }

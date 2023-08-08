@@ -1,6 +1,6 @@
 #include "kbd.h"
 #include <fs/vfs.h>
-#include <sys/sysres.h>
+#include <fs/vfs_async.h>
 #include <libk/types.h>
 #include <libk/con/spinlock.h>
 #include <libk/con/semaphore.h>
@@ -15,81 +15,72 @@
 #define BUFF_SIZE 16
 struct ringbuff c_buff;
 
-static struct spinlock read_spinlock;
-static struct semaphore data_available;
-static int read_notify = 0;
+static struct semaphore data_available, list_sema, insert_lock;
+static struct list req_list;
+
+static size_t list_read_pending = 0;
 
 int kbd_get_fid(char* path) {
     (void) path;
     return 0; // we have only one file
 }
 
-ssize_t kbd_read(struct fd_info* file, void* buff, size_t len) {
-    (void) file;
-    spinlock_lock(&read_spinlock);
-    while(!ringbuff_length(&c_buff)) {
-        spinlock_unlock(&read_spinlock);
-        semaphore_down(&data_available); // sleep until some data is in the buffer
-        spinlock_lock(&read_spinlock); // lock reading (and tail/length modification) to one process
-    }
+int kbd_submit_req(struct vfs_async_req_t* req) {
+    if (req->type != 1)
+        return -ENOSUP;
 
-    size_t size = ringbuff_read(&c_buff, buff, len);
-    ASSERT(size != 0); // spinlock fail?
+    semaphore_down(&insert_lock);
+    if (req->flags & VFS_ASYNC_FLAG_WANT_WOULDBLOCK && list_read_pending > ringbuff_length(&c_buff))
+        return -EWOULDBLOCK;
+    list_read_pending += list_read_pending;
+    
+    list_append(&req_list, req);
+    semaphore_up(&list_sema);
+    semaphore_up(&insert_lock);
 
-    if(ringbuff_length(&c_buff))
-        semaphore_binary_up(&data_available); // data is still in buffer, wake up other process
-
-    spinlock_unlock(&read_spinlock);
-
-    return size;
+    return 0;
 }
 
-ssize_t kbd_read_nonblock(struct fd_info* file, void* buff, size_t len) {
-    (void) file;
-    spinlock_lock(&read_spinlock);
-    if(!ringbuff_length(&c_buff)) {
-        read_notify = 1; // FIXME_LATER: ioctl
-        spinlock_unlock(&read_spinlock);
-        return -EWOULDBLOCK;
+void kbd_thread_loop() {
+    for(;;) {
+        semaphore_down(&list_sema);
+
+        struct vfs_async_req_t* req = req_list.first->val;
+
+        // reading ringbuff is thread safe here
+        while(!ringbuff_length(&c_buff))
+            semaphore_down(&data_available);
+
+        ASSERT(req->pid == 0); // only reads to kernel buffer are supported
+        ssize_t res = ringbuff_read(&c_buff, req->vbuff, req->size);
+
+        if(ringbuff_length(&c_buff))
+            semaphore_binary_up(&data_available);
+        
+        list_read_pending -= res;
+        list_remove(&req_list, req_list.first);
+
+        vfs_async_finalize(req, req->size);
     }
-
-    size_t size = ringbuff_read(&c_buff, buff, len);
-    ASSERT(size != 0);
-
-    if(ringbuff_length(&c_buff)) {
-        semaphore_binary_up(&data_available);
-        if(read_notify) {
-            read_notify = 0;
-            sysres_notify();
-        }
-    }
-
-    spinlock_unlock(&read_spinlock);
-
-    return size;
 }
 
 void kbd_vfs_submit_char(char c) {
-    ringbuff_force_write(&c_buff, (unsigned char*)&c, 1);
+    ringbuff_write(&c_buff, (unsigned char*)&c, 1);
 
     semaphore_binary_up(&data_available);
-    if(read_notify) {
-        read_notify = 0;
-        sysres_notify();
-    }
 }
 
 void kbd_vfs_init() {
     const struct vfs_reg kbd_vfs_reg = {
             kbd_get_fid,
-            kbd_read,
-            NULL,
-            kbd_read_nonblock,
-            NULL,
+            kbd_submit_req,
+            VFS_REG_FLAG_KERNEL_BUFFER_ONLY
     };
     vfs_mount("/dev/kbd", &kbd_vfs_reg);
 
     ringbuff_init(&c_buff, BUFF_SIZE);
-    spinlock_init(&read_spinlock);
     semaphore_init(&data_available);
+    semaphore_init(&list_sema);
+    semaphore_init(&insert_lock);
+    semaphore_up(&insert_lock);
 }

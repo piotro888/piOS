@@ -11,6 +11,8 @@ static int vfs_id = 0;
 
 static struct vfs_node vfs_root;
 
+static unsigned int req_id = 0;
+
 void vfs_init() {
     vfs_root.name = kmalloc(2);
     vfs_root.parent = &vfs_root;
@@ -27,12 +29,7 @@ int vfs_mount(char* path, const struct vfs_reg* handles) {
 
     struct vfs_node* node = vnode_tree_create(path);
     node->handles = kmalloc(sizeof(struct vfs_reg));
-    // FIXME: change to memcpy (figure out int/char on this architecture)
-    node->handles->get_fid = handles->get_fid;
-    node->handles->read = handles->read;
-    node->handles->write = handles->write;
-    node->handles->read_nonblock = handles->read_nonblock;
-    node->handles->write_nonblock = handles->write_nonblock;
+    memcpy(node->handles, handles, sizeof(struct vfs_reg));
 
     node->vid = ++vfs_id;
 
@@ -72,36 +69,135 @@ int vfs_close(int fd) {
     return 0;
 }
 
-ssize_t vfs_read(int fd, void* buff, size_t len) {
+ssize_t vfs_read_blocking(int fd, void* buff, size_t size) {
     if(fd > PROC_MAX_FILES || fd < 0 || current_proc->open_files[fd].vnode == NULL)
         return -EBADFD;
-
-    return (*current_proc->open_files[fd].vnode->handles->read)(&current_proc->open_files[fd], buff, len);
-}
-
-ssize_t vfs_write(int fd, void* buff, size_t len) {
-    if(fd > PROC_MAX_FILES || fd < 0 || current_proc->open_files[fd].vnode == NULL)
-        return -EBADFD;
-
-    return (*current_proc->open_files[fd].vnode->handles->write)(&current_proc->open_files[fd], buff, len);
-}
-
-ssize_t vfs_read_nonblock(int fd, void* buff, size_t len) {
-    if(fd > PROC_MAX_FILES || fd < 0 || current_proc->open_files[fd].vnode == NULL)
-        return -EBADFD;
-    if(!current_proc->open_files[fd].vnode->handles->read_nonblock)
+    if(!current_proc->open_files[fd].vnode->handles->async_request)
         return -ENOSUP;
 
-    return (*current_proc->open_files[fd].vnode->handles->read_nonblock)(&current_proc->open_files[fd], buff, len);
+    struct semaphore* lock = kmalloc(sizeof(struct semaphore));
+    struct vfs_async_req_t* req = kmalloc(sizeof(struct vfs_async_req_t));
+    req->file = &current_proc->open_files[fd];
+    req->type = VFS_ASYNC_TYPE_READ;
+    req->pid = 0;
+    req->req_id = ++req_id;
+    req->callback = NULL;
+    req->vbuff = buff;
+    req->size = size;
+    req->flags = 0;
+    req->fin_sema = lock;
+
+    semaphore_init(lock);
+
+    ssize_t rc = (*current_proc->open_files[fd].vnode->handles->async_request)(req);
+    if(rc < 0) {
+        kfree(req);
+        kfree(lock);
+        return rc;
+    }
+    
+    semaphore_down(lock);
+
+    ssize_t res = req->res;
+
+    kfree(req);
+    kfree(lock);
+    
+    return res;
 }
 
-ssize_t vfs_write_nonblock(int fd, void* buff, size_t len) {
+ssize_t vfs_write_blocking(int fd, void* buff, size_t size) {
     if(fd > PROC_MAX_FILES || fd < 0 || current_proc->open_files[fd].vnode == NULL)
         return -EBADFD;
-    if(!current_proc->open_files[fd].vnode->handles->write_nonblock)
+    if(!current_proc->open_files[fd].vnode->handles->async_request)
         return -ENOSUP;
 
-    return (*current_proc->open_files[fd].vnode->handles->write_nonblock)(&current_proc->open_files[fd], buff, len);
+    struct semaphore* lock = kmalloc(sizeof(struct semaphore));
+    struct vfs_async_req_t* req = kmalloc(sizeof(struct vfs_async_req_t));
+    req->file = &current_proc->open_files[fd];
+    req->type = VFS_ASYNC_TYPE_WRITE;
+    req->pid = 0;
+    req->req_id = ++req_id;
+    req->callback = NULL;
+    req->vbuff = buff;
+    req->size = size;
+    req->flags = 0;
+    req->fin_sema = lock;
+
+    semaphore_init(lock);
+
+    ssize_t rc = (*current_proc->open_files[fd].vnode->handles->async_request)(req);
+    if(rc < 0) {
+        kfree(req);
+        kfree(lock);
+        return rc;
+    }
+    
+    semaphore_down(lock);
+
+    ssize_t res = req->res;
+
+    kfree(req);
+    kfree(lock);
+    
+    return res;
+}
+
+ssize_t vfs_read_async(int fd, int pid, void* buff, size_t size, void (*callback)(), int rid) {
+    if(fd > PROC_MAX_FILES || fd < 0 || current_proc->open_files[fd].vnode == NULL)
+        return -EBADFD;
+    if(!current_proc->open_files[fd].vnode->handles->async_request)
+        return -ENOSUP;
+
+    struct vfs_async_req_t* req = kmalloc(sizeof(struct vfs_async_req_t));
+    req->file = &current_proc->open_files[fd];
+    req->type = VFS_ASYNC_TYPE_READ;
+    req->pid = pid;
+    req->req_id = rid ? rid : ++req_id;
+    req->callback = callback;
+    req->vbuff = buff;
+    req->size = size;
+    req->flags = 0;
+    req->fin_sema = NULL;
+    int id = req->req_id;
+
+    ssize_t rc = (*current_proc->open_files[fd].vnode->handles->async_request)(req);
+
+    // NOTE: req must be kfreed at completion callback/semaphore
+
+    if(rc < 0) {
+        kfree(req);
+        return rc;
+    }
+    return id;
+}
+
+ssize_t vfs_write_async(int fd, int pid, void* buff, size_t size, void (*callback)(), int rid) {
+    if(fd > PROC_MAX_FILES || fd < 0 || current_proc->open_files[fd].vnode == NULL)
+        return -EBADFD;
+    if(!current_proc->open_files[fd].vnode->handles->async_request)
+        return -ENOSUP;
+
+    struct vfs_async_req_t* req = kmalloc(sizeof(struct vfs_async_req_t));
+    req->file = &current_proc->open_files[fd];
+    req->type = VFS_ASYNC_TYPE_WRITE;
+    req->pid = pid;
+    req->req_id = rid ? rid : ++req_id;
+    req->callback = callback;
+    req->vbuff = buff;
+    req->size = size;
+    req->flags = 0;
+    req->fin_sema = NULL;
+
+    int id = req->req_id;
+
+    ssize_t rc = (*current_proc->open_files[fd].vnode->handles->async_request)(req);
+    
+    if(rc < 0) {
+        kfree(req);
+        return rc;
+    }
+    return id;
 }
 
 ssize_t vfs_seek(int fd, ssize_t off, int whence) {
@@ -123,6 +219,12 @@ ssize_t vfs_seek(int fd, ssize_t off, int whence) {
             return current_proc->open_files[fd].seek;
     }
 
+}
+
+int vfs_get_vnode_flags(int fd) {
+    if(fd > PROC_MAX_FILES || fd < 0 || current_proc->open_files[fd].vnode == NULL)
+        return -EBADFD;
+    return current_proc->open_files[fd].vnode->handles->flags;
 }
 
 int fd_get_free() {

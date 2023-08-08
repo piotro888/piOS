@@ -2,17 +2,24 @@
 #include <string.h>
 #include <libk/kprintf.h>
 #include <libk/kmalloc.h>
+#include <libk/list.h>
+#include <libk/math.h>
 #include <fs/dirtree.h>
 #include <fs/vfs.h>
+#include <fs/vfs_async.h>
+#include <proc/sched.h>
 #include <driver/sd.h>
 #include <panic.h>
 
 #define SECTOR_SIZE 512
 
-char sector_buff[SECTOR_SIZE];
+static char sector_buff[SECTOR_SIZE];
 
-struct dir_t_node tar_dir_tree;
-struct semaphore request_wait;
+static struct dir_t_node tar_dir_tree;
+static struct semaphore request_wait;
+
+static struct list req_list;
+static struct semaphore list_sema, list_lock;
 
 int convert_octal(char* octal)  {
     int res = 0;
@@ -24,10 +31,13 @@ int convert_octal(char* octal)  {
     return res;
 }
 
-void sd_read_adapter(char* buff, size_t block) {
+void sd_read_adapter(int pid, char* vbuff, size_t block, size_t len, size_t offset) {
     struct sd_driver_req req = {
-            (u8*)buff,
+            pid,
+            (u8*)vbuff,
             block,
+            offset,
+            len,
             &request_wait
     };
     sd_submit_request(req);
@@ -44,8 +54,8 @@ int tar_get_fid(char* path) {
     return file->sector; // simply return sector number as unique file number
 }
 
-ssize_t tar_read(struct fd_info* file, void* buff, size_t len) {
-    sd_read_adapter(sector_buff, file->inode);
+ssize_t tar_read_blocking(struct fd_info* file, int pid, void* vbuff, size_t len) {
+    sd_read_adapter(0, sector_buff, file->inode, sizeof(struct tar_t), 0);
 
     struct tar_t* header = (struct tar_t*) sector_buff;
     
@@ -58,19 +68,26 @@ ssize_t tar_read(struct fd_info* file, void* buff, size_t len) {
 
     int pos = file->seek % SECTOR_SIZE;
     int sector = file->inode + (file->seek / SECTOR_SIZE) + 1; // inode is header sector number
-    char* data = sector_buff + pos;
-    sd_read_adapter(sector_buff, sector);
+ 
+    char* buffc = (char*) vbuff;
 
-    char* buffc = (char*) buff;
-    for(size_t i=0; i<len; i++) {
-        if(pos++ == 512) {
-            sd_read_adapter(sector_buff, ++sector);
-            data = sector_buff;
-            pos = 0;
+    size_t new_len = len;
+    
+    size_t readlen = MIN(new_len, SECTOR_SIZE-pos);
+    sd_read_adapter(pid, vbuff, sector++, readlen, pos);
+    new_len -= readlen;
+    vbuff += readlen;
+
+    if (new_len) {
+        for(size_t i=0; i<new_len/512; i++) {
+            sd_read_adapter(pid, vbuff, sector++, SECTOR_SIZE, 0);
+            vbuff += SECTOR_SIZE;
+            new_len -= SECTOR_SIZE;
         }
-        *buffc++ = *data++;
+        if (new_len)
+            sd_read_adapter(pid, vbuff, sector, new_len, 0);
     }
-
+    
     file->seek += len;
     return len;
 }
@@ -82,7 +99,7 @@ void tar_make_dir_tree() {
     dir_tree_init(&tar_dir_tree);
 
     while (empty_sectors < 2) {
-        sd_read_adapter(sector_buff, sector);
+        sd_read_adapter(0, sector_buff, sector, sizeof(struct tar_t), 0);
 
         if(header->name[0] == '\0') {
             empty_sectors++;
@@ -109,18 +126,46 @@ void tar_make_dir_tree() {
     }
 }
 
-ssize_t tar_write(struct fd_info* file, void* buff, size_t len) {
-    (void) file, (void) buff, (void) len;
-    return -ENOSUP;
+void tar_process_request(struct vfs_async_req_t* req) {
+    if (req->type == VFS_ASYNC_TYPE_READ) {
+        ssize_t res = tar_read_blocking(req->file, req->pid, req->vbuff, req->size);
+        vfs_async_finalize(req, res);
+    }
+}
+
+ssize_t tar_submit_req(struct vfs_async_req_t* req) {
+    semaphore_down(&list_lock);
+    if (req->type != VFS_ASYNC_TYPE_READ)
+        return -ENOSUP;
+    
+    list_append(&req_list, req);
+    semaphore_up(&list_sema);
+    semaphore_up(&list_lock);
+    return 0;
+}
+
+void __attribute__((noreturn)) tar_driver_loop() {
+    for(;;) {
+        semaphore_down(&list_sema);
+        tar_process_request(req_list.first->val);
+        list_remove(&req_list, req_list.first);
+    }
+}
+
+void tar_init() {
+    list_init(&req_list);
+    semaphore_init(&list_sema);
+    semaphore_init(&list_lock);
+    semaphore_up(&list_lock);
+    tar_make_dir_tree();
+    make_kernel_thread("drv::tar", tar_driver_loop);
 }
 
 void tar_mount_sd() {
     const struct vfs_reg handles = {
             tar_get_fid,
-            tar_read,
-            tar_write,
-            NULL,
-            NULL,
+            tar_submit_req,
+            0
     };
 
     vfs_mount("/sd/", &handles);

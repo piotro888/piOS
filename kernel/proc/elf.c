@@ -1,4 +1,3 @@
-#define DEBUG
 #include <string.h>
 #include <fs/vfs.h>
 #include <proc/virtual.h>
@@ -82,7 +81,7 @@ void load_to_page(int fd, size_t off, size_t end_addr, int page, int prog) {
 
     size_t m_addr = off;
     while (m_addr <= end_addr) {
-        size_t read = vfs_read(fd, load_buff, MIN(LOAD_BUFF, (end_addr - m_addr + 1)));
+        size_t read = vfs_read_blocking(fd, load_buff, MIN(LOAD_BUFF, (end_addr - m_addr + 1)));
         ASSERT(read);
 
         if(prog)
@@ -131,7 +130,7 @@ int phys_page_to_load(struct proc* proc, u16 vaddr, int prog) {
 
 void load_ph(int fd, char* ph, struct proc* proc) {
     for(size_t i=0; i<GET_U16(buff, EH_OFF_PHNUM); i++) {
-        vfs_read(fd, ph, PH_SIZE);
+        vfs_read_blocking(fd, ph, PH_SIZE);
         size_t next_ph = vfs_seek(fd, 0, SEEK_CUR);
 
         if(GET_U16(ph, PH_OFF_TYPE) == PT_LOAD) {
@@ -182,7 +181,7 @@ void load_ph(int fd, char* ph, struct proc* proc) {
 }
 
 int elf_load(int fd) {
-    if (vfs_read(fd, buff, HEADER_SIZE) != HEADER_SIZE) {
+    if (vfs_read_blocking(fd, buff, HEADER_SIZE) != HEADER_SIZE) {
         log("Elf: file too short");
         return -1;
     }

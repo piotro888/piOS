@@ -17,6 +17,11 @@ void enable_default_memory_paging();
 void disable_paging();
 void map_page_zero(int ext_page);
 
+unsigned int get_proc_addr_page(int pid, void* addr);
+
 #define ILLEGAL_PAGE 0
+
+#define VIRT_PAGE_PART(addr)  (((unsigned int)addr)>>12)
+#define VIRT_LOCAL_PART(addr) (((unsigned int)addr)&0x0fff)
 
 #endif

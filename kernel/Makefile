@@ -25,6 +25,7 @@ SOURCES=\
 	fs/sio.c \
 	fs/tar.c \
 	fs/vfs.c \
+	fs/vfs_async.c \
 	irq/interrupt.c \
 	irq/irq.S \
 	irq/timer.c \
@@ -42,8 +43,7 @@ SOURCES=\
 	proc/elf.c \
 	proc/sched.c \
 	proc/virtual.c\
-	sys/sysd.c \
-	sys/sysres.c
+	sys/sysd.c
 
 SRC_LIBS=../lib/libc/build/libc_k.a
 INC_LIBS=-I../lib/libc/include

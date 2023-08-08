@@ -3,13 +3,16 @@
 #include <driver/tty.h>
 #include <proc/sched.h>
 #include <proc/virtual.h>
-#include <sys/sysres.h>
+#include <fs/vfs.h>
+#include <fs/vfs_async.h>
 
 #include <libk/con/blockq.h>
 #include <libk/log.h>
 #include <libk/kmalloc.h>
 
 struct blockq syscall_q;
+
+void async_finished_callback(struct vfs_async_req_t* req);
 
 int process_syscall(struct proc* proc) {
     int sysno = proc->regs[0];
@@ -41,44 +44,88 @@ int process_syscall(struct proc* proc) {
             break;
         }
         case SYS_READ: {
-            void* kcbuff = kmalloc(sizeof proc->regs[3]);
-            ssize_t r = vfs_read_nonblock(proc->regs[1], kcbuff, proc->regs[3]);
-            if(r == -EWOULDBLOCK) { // LATER_FIXME: If ioctl nonblock is set return it
-                kfree(kcbuff);
-                sysres_submit_read(proc);
-                return 0;
-            } else if(r == -ENOSUP) { // fallback
-                r = vfs_read(proc->regs[1], kcbuff, proc->regs[3]);
+            int flags = vfs_get_vnode_flags(proc->regs[1]);
+            if (flags < 0) {
+                proc->regs[0] = flags;
+                return 1;
+            }
+            
+            void* ks_buff = NULL;
+            if (flags & VFS_REG_FLAG_KERNEL_BUFFER_ONLY) {
+                ks_buff = kmalloc(sizeof proc->regs[3]);
             }
 
-            if(r > 0)
-                memcpy_to_userspace(proc, proc->regs[2], kcbuff, r);
-            kfree(kcbuff);
-            proc->regs[0] = r;
-            break;
+            ssize_t r = vfs_read_async(proc->regs[1], 
+                ks_buff ? 0 : proc->pid, 
+                ks_buff ? ks_buff : (void*)proc->regs[2], 
+                proc->regs[3],
+                async_finished_callback,
+                proc->pid
+            );
+
+            if (r < 0) {
+                if (ks_buff)
+                    kfree(ks_buff);
+                proc->regs[0] = r;
+                return 1;
+            }
+            return 0;
         }
         case SYS_WRITE: {
-            void* kcbuff = kmalloc(sizeof proc->regs[3]);
-            memcpy_from_userspace(kcbuff, proc, proc->regs[2], proc->regs[3]);
-            ssize_t r = vfs_write_nonblock(proc->regs[1], kcbuff, proc->regs[3]);
-            if(r == -EWOULDBLOCK) { // LATER_FIXME: If ioctl nonblock is set return it
-                kfree(kcbuff);
-                sysres_submit_write(proc);
-                return 0;
-            } else if(r == -ENOSUP) { // fallback
-                r = vfs_write(proc->regs[1], kcbuff, proc->regs[3]);
+            int flags = vfs_get_vnode_flags(proc->regs[1]);
+            if (flags < 0) {
+                proc->regs[0] = flags;
+                return 1;
+            }
+            
+            void* ks_buff = NULL;
+            if (flags & VFS_REG_FLAG_KERNEL_BUFFER_ONLY) {
+                // TODO: validate size
+                ks_buff = kmalloc(sizeof proc->regs[3]);
+                memcpy_from_userspace(ks_buff, proc, proc->regs[2], proc->regs[3]);
             }
 
-            kfree(kcbuff);
-            proc->regs[0] = r;
-            break;
+            ssize_t r = vfs_write_async(proc->regs[1], 
+                ks_buff ? 0 : proc->pid, 
+                ks_buff ? ks_buff : (void*)proc->regs[2], 
+                proc->regs[3],
+                async_finished_callback,
+                proc->pid
+            );
+
+            if (r < 0) {
+                if (ks_buff)
+                    kfree(ks_buff);
+                proc->regs[0] = r;
+                // req not allocated
+                return 1;
+            }
+            return 0;
         }
         default: {
             log("PID: %d Illegal syscall (%d)", proc->pid, sysno);
+            proc->regs[0] = -EINVAL;
             break;
         }
     }
     return 1;
+}
+
+void async_finished_callback(struct vfs_async_req_t* req) {
+    // we have only blocking syscalls for now, so that's easy to identify
+    struct proc* proc = proc_by_pid(req->req_id);
+    proc->regs[0] = req->res;
+
+    log_dbg("PID: %d syscall callback: %x", req->req_id, req->res);
+
+    if (req->type == VFS_ASYNC_TYPE_READ && req->res && !req->pid)
+        memcpy_to_userspace(proc, proc->regs[2], req->vbuff, req->res);
+
+    if (!req->pid) // kernel allocated buffer
+        kfree(req->vbuff);
+
+    kfree(req);
+    proc->state = PROC_STATE_RUNNABLE;
 }
 
 __attribute__((noreturn)) void syscall_dispatcher() {
@@ -89,7 +136,7 @@ __attribute__((noreturn)) void syscall_dispatcher() {
 
         int sys_ret = process_syscall(proc);
         if(sys_ret) {
-            log("PID: %d resuming from syscall (ret %d)", proc_pid, proc->regs[0]);
+            log_dbg("PID: %d resuming from syscall (ret %d)", proc_pid, proc->regs[0]);
             proc->state = PROC_STATE_RUNNABLE;
         }
     }
