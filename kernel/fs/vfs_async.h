@@ -11,7 +11,7 @@
 
 struct vfs_async_req_t {
     unsigned int req_id;
-    struct fd_info* file;
+    struct proc_file* file;
     int type;
 
     unsigned int pid;

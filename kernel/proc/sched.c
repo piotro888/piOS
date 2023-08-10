@@ -116,7 +116,7 @@ int make_kernel_thread(char* name, void __attribute__((noreturn)) (*entry)()) {
 
     // initialize fd table as free
     for(int i=0; i<PROC_MAX_FILES; i++)
-        p->open_files[i].vnode = NULL;
+        p->open_files[i].inode = NULL;
 
     // thread is ready to execute now
     p->state = PROC_STATE_RUNNABLE;
@@ -153,7 +153,7 @@ struct proc* sched_init_user_thread() {
 
     // initialize fd table as free
     for(int i=0; i<PROC_MAX_FILES; i++)
-        p->open_files[i].vnode = NULL;
+        p->open_files[i].inode = NULL;
     p->sema_blocked = NULL;
 
     p->state = PROC_STATE_UNLOADED;

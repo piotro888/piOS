@@ -22,6 +22,7 @@ SOURCES=\
 	driver/vga.c \
 	fs/dirtree.c \
 	fs/kbd.c \
+	fs/rootfs.c \
 	fs/sio.c \
 	fs/tar.c \
 	fs/vfs.c \
@@ -35,6 +36,7 @@ SOURCES=\
 	libk/kprintf.c \
 	libk/list.c \
 	libk/log.c \
+	libk/string.c \
 	libk/ringbuff.c \
 	libk/con/blockq.c \
 	libk/con/semaphore.c \

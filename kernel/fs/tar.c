@@ -44,30 +44,23 @@ void sd_read_adapter(int pid, char* vbuff, size_t block, size_t len, size_t offs
     semaphore_down(&request_wait);
 }
 
-/* For use in vfs. Returns unique file (inode) number or kernel error */
-int tar_get_fid(char* path) {
-    struct file_t* file = dir_tree_get_file(&tar_dir_tree, path);
-    
-    if(file == NULL)
-        return -ENOTFOUND;
-
-    return file->sector; // simply return sector number as unique file number
+struct inode* tar_find_inode(struct vnode* self, const char* path) {
+    struct inode* res = dir_tree_get_file(&tar_dir_tree, path);
+    if (res)
+        res->vnode = self;
+    return res;
 }
 
-ssize_t tar_read_blocking(struct fd_info* file, int pid, void* vbuff, size_t len) {
-    sd_read_adapter(0, sector_buff, file->inode, sizeof(struct tar_t), 0);
-
-    struct tar_t* header = (struct tar_t*) sector_buff;
-    
-    size_t file_size = convert_octal((char*)header->size);
-    if(file->seek >= file_size)
+ssize_t tar_read_blocking(struct proc_file* file, int pid, void* vbuff, size_t len) {
+    size_t file_size = file->inode->size;
+    if(file->offset >= file_size)
         return 0;
 
-    if(file->seek + len > file_size)
-        len = file_size - file->seek;
+    if(file->offset + len > file_size)
+        len = file_size - file->offset;
 
-    int pos = file->seek % SECTOR_SIZE;
-    int sector = file->inode + (file->seek / SECTOR_SIZE) + 1; // inode is header sector number
+    int pos = file->offset % SECTOR_SIZE;
+    int sector = file->inode->fid + (file->offset / SECTOR_SIZE) + 1; // file id is header sector number
  
     char* buffc = (char*) vbuff;
 
@@ -88,19 +81,18 @@ ssize_t tar_read_blocking(struct fd_info* file, int pid, void* vbuff, size_t len
             sd_read_adapter(pid, vbuff, sector, new_len, 0);
     }
     
-    file->seek += len;
+    file->offset += len;
     return len;
 }
 
-void tar_make_dir_tree() {
+void tar_make_dir_tree(struct vnode* self) {
     semaphore_init(&request_wait);
     int empty_sectors = 0, sector = 0;
     struct tar_t* header = (struct tar_t*) sector_buff;
-    dir_tree_init(&tar_dir_tree);
+    dir_tree_init(&tar_dir_tree, self);
 
     while (empty_sectors < 2) {
         sd_read_adapter(0, sector_buff, sector, sizeof(struct tar_t), 0);
-
         if(header->name[0] == '\0') {
             empty_sectors++;
             sector++;
@@ -113,13 +105,15 @@ void tar_make_dir_tree() {
         };
         
         size_t size = convert_octal((char*)header->size);
-        struct file_t* file = kmalloc(sizeof(struct file_t));
-        strcpy(file->name, (char*)header->name);
-        file->size = size;
-        file->type = FS_TYPE_FILE; // FIXME
-        file->sector = sector;
-
-        dir_tree_add_path(&tar_dir_tree, file);
+        struct inode* inode = kmalloc(sizeof(struct inode));
+        inode->fid = sector;
+        inode->type = (char)header->type == '5' ? INODE_TYPE_DIRECTORY : INODE_TYPE_FILE;
+        inode->size = size;
+        inode->name = kmalloc(strlen((char*)header->name));
+        inode->vnode = self;
+        strcpy(inode->name, (char*)header->name);
+        
+        dir_tree_add_path(&tar_dir_tree, inode);
 
         int sectors_skip = (size+SECTOR_SIZE-1)/SECTOR_SIZE + 1;
         sector += sectors_skip;
@@ -152,21 +146,25 @@ void __attribute__((noreturn)) tar_driver_loop() {
     }
 }
 
-void tar_init() {
+void tar_init(struct vnode* vnode) {
     list_init(&req_list);
     semaphore_init(&list_sema);
     semaphore_init(&list_lock);
     semaphore_up(&list_lock);
-    tar_make_dir_tree();
+    tar_make_dir_tree(vnode);
     make_kernel_thread("drv::tar", tar_driver_loop);
 }
 
-void tar_mount_sd() {
-    const struct vfs_reg handles = {
-            tar_get_fid,
-            tar_submit_req,
-            0
-    };
+const static struct vfs_reg reg = {
+    "tar",
+    0,
+    NULL,
 
-    vfs_mount("/sd/", &handles);
+    tar_find_inode,
+    NULL,
+    tar_submit_req
+};
+
+const struct vfs_reg* tar_get_vfs_reg() {
+    return &reg;
 }

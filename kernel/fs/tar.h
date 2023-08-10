@@ -2,6 +2,7 @@
 #define FS_TARFS_H
 
 #include <libk/types.h>
+#include <fs/vfs.h>
 
 /* direct tar file structure */
 /* Unix Standard Tape ARchive */
@@ -13,7 +14,7 @@ struct tar_t {
     uint8_t size[12];
     uint8_t mod_time[12];
     uint8_t checksum[8];
-    uint8_t link;
+    uint8_t type;
     uint8_t link_name[100];
     uint8_t ustarzz[8];
     uint8_t owner_name[32];
@@ -23,22 +24,7 @@ struct tar_t {
     uint8_t name_prefix[155];
 };
 
-#define FS_TYPE_FILE 0
-#define FS_TYPE_DIR 1
-
-struct file_t {
-    char name[100];
-    size_t size;
-    int8_t type;
-    
-    size_t sector;
-};
-
-#define ENOTFOUND 5
-#define ETOOMANYFILES 6
-#define EINVALIDFD 7
-
-void tar_init();
-void tar_mount_sd();
+void tar_init(struct vnode* vnode);
+const struct vfs_reg* tar_get_vfs_reg();
 
 #endif

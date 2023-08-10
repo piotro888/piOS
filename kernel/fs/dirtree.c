@@ -4,9 +4,9 @@
 #include <libk/list.h>
 #include <libk/kprintf.h>
 #include <libk/kmalloc.h>
-#include <fs/tar.h>
+#include <fs/vfs.h>
 
-int get_slash_pos(char* s, int n) {
+int get_slash_pos(const char* s, int n) {
     size_t pos = 0;
     while(*s) {
         if(*s == '/') {
@@ -19,14 +19,20 @@ int get_slash_pos(char* s, int n) {
     return -1;
 }
 
-void dir_tree_init(struct dir_t_node* root) {
+void dir_tree_init(struct dir_t_node* root, struct vnode* root_vnode) {
     strcpy(root->name, "/");
     root->parent = root;
+    root->inode = kmalloc(sizeof(struct inode));
+    root->inode->fid = (u16) -1; // root directory does not exist in tar archive, otherwise overwrite
+    root->inode->name = "/";
+    root->inode->size = 0;
+    root->inode->type = INODE_TYPE_DIRECTORY;
+    root->inode->vnode = root_vnode;
     list_init(&root->subdirs);
     list_init(&root->files);
 }
 
-void dir_tree_add_path(struct dir_t_node* root, struct file_t* file) {
+void dir_tree_add_path(struct dir_t_node* root, struct inode* file) {
     char* path = file->name;
 
     char* next_slash = path;
@@ -62,8 +68,10 @@ void dir_tree_add_path(struct dir_t_node* root, struct file_t* file) {
         node = new_node;
     }
 
-    if(file->name[strlen(file->name)-1] == '/')
+    if(*(file->name+(strlen(file->name)-1)) == '/') {
+        node->inode = file;
         return;
+    }
 
     list_append(&node->files, file);
 }
@@ -74,7 +82,7 @@ void dir_tree_printf(struct dir_t_node* node, int depth) {
     INP; kprintf("d: %s\n", node->name);
     depth++;
     list_foreach(&node->files) {
-        struct file_t* val = LIST_FOREACH_VAL(struct file_t*);
+        struct inode* val = LIST_FOREACH_VAL(struct inode*);
         INP; kprintf("f: %s\n", val->name);
     }
 
@@ -84,11 +92,9 @@ void dir_tree_printf(struct dir_t_node* node, int depth) {
     }
 }
 
-struct file_t* dir_tree_get_file(struct dir_t_node* node, char* path) {
+struct inode* dir_tree_get_file(struct dir_t_node* node, const char* path) {
     int dir_depth = 0, path_index;
-
-    ASSERT(*path == '/');
-    path++;
+    
     while((path_index = get_slash_pos(path, dir_depth++)) > 0) {
         int found = 0;
         list_foreach(&node->subdirs) {
@@ -104,9 +110,13 @@ struct file_t* dir_tree_get_file(struct dir_t_node* node, char* path) {
         if(!found)
             return NULL;
     }
+    
+    if (*(path+strlen(path)-1) == '/' && !strcmp(node->name, path)) {
+        return node->inode;
+    }
 
     list_foreach(&node->files) {
-        struct file_t* file = LIST_FOREACH_VAL(struct file_t*);
+        struct inode* file = LIST_FOREACH_VAL(struct inode*);
         if(!strcmp(file->name, path)) 
             return file;
     }

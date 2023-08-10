@@ -11,6 +11,7 @@
 #include <fs/kbd.h>
 #include <fs/sio.h>
 #include <fs/tar.h>
+#include <fs/rootfs.h>
 #include <fs/vfs.h>
 #include <irq/timer.h>
 #include <proc/elf.h>
@@ -71,27 +72,28 @@ struct semaphore sleep;
 
 void __attribute__((noreturn)) init_stage1() {
     // Continue kernel boot in threaded environment
-    log("mounting devices in vfs");
-    kbd_vfs_init();
-    sio_mnt_vfs();
-    //tty_mnt_vfs();
+    log("creating rootfs");
+    struct vnode* rootfs = vfs_mount(rootfs_get_vfs_reg(), vfs_get_root_inode());
+    rootfs_create(rootfs);
 
     log("registering system threads");
     sysd_init();
     sd_register_thread();
 
     log("mounting SD card TAR filesystem");
-    tar_init();
-    tar_mount_sd();
+    struct vnode* tarfs = vfs_mount(tar_get_vfs_reg(), rootfs_create_entry(rootfs, "", "sd/", INODE_TYPE_DIRECTORY));
+    tar_init(tarfs);
 
     log("%uB kernel heap, %ukB paged memory free", mem_free_size(), 0);
     log("init stage 1 done");
 
-    int fd = vfs_open("/sd/bin/example");
-    log("fd: %d", fd);
-    ASSERT(fd >= 0);
-
-    elf_load(fd);
+    struct inode* load_inode = vfs_find_inode("/sd/bin/libe");
+    ASSERT(load_inode);
+    struct proc_file* elf_file = &current_proc->open_files[proc_free_fd(current_proc)];
+    vfs_open(load_inode, elf_file);
+    log("loading ELF %s", elf_file->inode->name);
+    elf_load(elf_file);
+    vfs_close(elf_file);
 
     semaphore_init(&sleep);
     semaphore_down(&sleep);

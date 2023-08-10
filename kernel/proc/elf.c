@@ -75,13 +75,13 @@ static char ph_buff[PH_SIZE];
                             (((u32)((buff)[(off)]))<<8ul) | (u32)((buff)[(off)]))
 
 // address is memory address
-void load_to_page(int fd, size_t off, size_t end_addr, int page, int prog) {
+void load_to_page(struct proc_file* file, size_t off, size_t end_addr, int page, int prog) {
     ASSERT(end_addr < PAGE_SIZE);
     log_dbg("load off=%x end=%x page=%x prog=%x", off, end_addr, page, prog);
 
     size_t m_addr = off;
     while (m_addr <= end_addr) {
-        size_t read = vfs_read_blocking(fd, load_buff, MIN(LOAD_BUFF, (end_addr - m_addr + 1)));
+        size_t read = vfs_read_blocking(file, load_buff, MIN(LOAD_BUFF, (end_addr - m_addr + 1)));
         ASSERT(read);
 
         if(prog)
@@ -128,16 +128,16 @@ int phys_page_to_load(struct proc* proc, u16 vaddr, int prog) {
     }
 }
 
-void load_ph(int fd, char* ph, struct proc* proc) {
+void load_ph(struct proc_file* file, char* ph, struct proc* proc) {
     for(size_t i=0; i<GET_U16(buff, EH_OFF_PHNUM); i++) {
-        vfs_read_blocking(fd, ph, PH_SIZE);
-        size_t next_ph = vfs_seek(fd, 0, SEEK_CUR);
+        vfs_read_blocking(file, ph, PH_SIZE);
+        size_t next_ph = vfs_seek(file, 0, SEEK_CUR);
 
         if(GET_U16(ph, PH_OFF_TYPE) == PT_LOAD) {
             u16 flags = GET_U16(ph, PH_OFF_FLAGS);
             int prog = (flags & PF_X) != 0;
 
-            vfs_seek(fd, GET_U16(ph, PH_OFF_OFFSET), SEEK_SET);
+            vfs_seek(file, GET_U16(ph, PH_OFF_OFFSET), SEEK_SET);
             size_t mem_size = GET_U16(ph, PH_OFF_FILESZ);
             size_t zero_mem_size = GET_U16(ph, PH_OFF_MEMSZ);
 
@@ -153,16 +153,16 @@ void load_ph(int fd, char* ph, struct proc* proc) {
 
             if(mem_size) {
                 // Load single pages - first page, then full pages, last page
-                load_to_page(fd, vaddr % PAGE_SIZE, MIN(PAGE_SIZE - 1, end_addr-vaddr), phys_page_to_load(proc, vaddr, prog), prog);
+                load_to_page(file, vaddr % PAGE_SIZE, MIN(PAGE_SIZE - 1, end_addr-vaddr), phys_page_to_load(proc, vaddr, prog), prog);
                 vaddr += MIN(PAGE_SIZE - (GET_U16(ph, PH_OFF_VADDR) % PAGE_SIZE), end_addr + 1);
 
                 for (int j = 0; j < pages - 2; j++) {
-                    load_to_page(fd, 0x000, PAGE_SIZE - 1, phys_page_to_load(proc, vaddr, prog), prog);
+                    load_to_page(file, 0x000, PAGE_SIZE - 1, phys_page_to_load(proc, vaddr, prog), prog);
                     vaddr += PAGE_SIZE;
                 }
                 
                 if (pages > 1) {
-                    load_to_page(fd, 0x000, end_addr % PAGE_SIZE, phys_page_to_load(proc, vaddr, prog), prog);
+                    load_to_page(file, 0x000, end_addr % PAGE_SIZE, phys_page_to_load(proc, vaddr, prog), prog);
                     vaddr += (end_addr % PAGE_SIZE) + 1;
                 }
             }
@@ -176,12 +176,12 @@ void load_ph(int fd, char* ph, struct proc* proc) {
             }
 
         }
-        vfs_seek(fd, next_ph, SEEK_SET);
+        vfs_seek(file, next_ph, SEEK_SET);
     }
 }
 
-int elf_load(int fd) {
-    if (vfs_read_blocking(fd, buff, HEADER_SIZE) != HEADER_SIZE) {
+int elf_load(struct proc_file* file) {
+    if (vfs_read_blocking(file, buff, HEADER_SIZE) != HEADER_SIZE) {
         log("Elf: file too short");
         return -1;
     }
@@ -216,8 +216,8 @@ int elf_load(int fd) {
 
     proc->pc = GET_U16(buff, EH_OFF_ENTRY);
 
-    vfs_seek(fd, phoff, SEEK_SET);
-    load_ph(fd, ph_buff, proc);
+    vfs_seek(file, phoff, SEEK_SET);
+    load_ph(file, ph_buff, proc);
 
     proc->state = PROC_STATE_RUNNABLE;
 

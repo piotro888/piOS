@@ -201,7 +201,19 @@ void tty_puts(const char* str) {
         tty_putc(*str++);
 }
 
-int tty_fs_get_fid(char* path) { (void)path; return 0; }
+static struct inode root_inode = {
+    "",
+    0,
+    0,
+    NULL,
+    INODE_TYPE_DEVICE
+};
+
+struct inode* tty_fs_get_inode(struct vnode* self, const char* path) { 
+    (void)path;
+    root_inode.vnode = self;
+    return &root_inode;
+}
 
 void __attribute__((noreturn)) tty_driver_thread_write() {
     for (;;) {
@@ -271,13 +283,18 @@ void tty_direct_write(char* buff, size_t len) {
     kfree(lock);
 }
 
-void tty_mnt_vfs() {
-    const struct vfs_reg reg = {
-            tty_fs_get_fid,
-            tty_submit_req,
-            VFS_REG_FLAG_KERNEL_BUFFER_ONLY
-    };
-    vfs_mount("/dev/tty", &reg);
+const struct vfs_reg tty_vfs_reg = {
+            "tty",
+            VFS_REG_FLAG_KERNEL_BUFFER_ONLY,
+            NULL,
+
+            tty_fs_get_inode,
+            NULL,
+            tty_submit_req
+};
+
+const struct vfs_reg* tty_get_vfs_reg() {
+    return &tty_vfs_reg;
 }
 
 // Initialize basic TTY/VGA functionality to use kprintf during boot (no malloc allowed here!)

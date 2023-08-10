@@ -1,10 +1,17 @@
 #ifndef PROC_PROC_H
 #define PROC_PROC_H
 
+#include <libk/types.h>
 #include <libk/con/semaphore.h>
-#include <fs/vfs.h>
 
 #define PROC_MAX_FILES 16
+
+struct proc_file {
+    struct inode* inode;
+    
+    size_t offset;
+    unsigned fcntl_flags;
+};
 
 struct proc {
     int pid;
@@ -23,7 +30,7 @@ struct proc {
     // short proc name
     char name[16];
 
-    struct fd_info open_files[PROC_MAX_FILES];
+    struct proc_file open_files[PROC_MAX_FILES];
 
     // blocking support
     struct semaphore* sema_blocked;

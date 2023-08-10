@@ -20,9 +20,18 @@ static struct list req_list;
 
 static size_t list_read_pending = 0;
 
-int kbd_get_fid(char* path) {
-    (void) path;
-    return 0; // we have only one file
+static struct inode root_inode = {
+    "",
+    0,
+    0,
+    NULL,
+    INODE_TYPE_DEVICE
+};
+
+struct inode* kbd_fs_get_inode(struct vnode* self, const char* path) { 
+    (void)path;
+    root_inode.vnode = self;
+    return &root_inode;
 }
 
 int kbd_submit_req(struct vfs_async_req_t* req) {
@@ -70,14 +79,22 @@ void kbd_vfs_submit_char(char c) {
     semaphore_binary_up(&data_available);
 }
 
-void kbd_vfs_init() {
-    const struct vfs_reg kbd_vfs_reg = {
-            kbd_get_fid,
-            kbd_submit_req,
-            VFS_REG_FLAG_KERNEL_BUFFER_ONLY
-    };
-    vfs_mount("/dev/kbd", &kbd_vfs_reg);
+const struct vfs_reg kbd_vfs_reg = {
+        "kbd",
+        VFS_REG_FLAG_KERNEL_BUFFER_ONLY,
+        NULL,
 
+        kbd_fs_get_inode,
+        NULL,
+        kbd_submit_req
+};
+
+const struct vfs_reg* kbd_get_vfs_reg() {
+    return &kbd_vfs_reg;
+}
+
+
+void kbd_vfs_init() {
     ringbuff_init(&c_buff, BUFF_SIZE);
     semaphore_init(&data_available);
     semaphore_init(&list_sema);

@@ -5,7 +5,7 @@
 
 void tty_init_basic();
 void tty_init_driver();
-void tty_mnt_vfs();
+const struct vfs_reg* tty_get_vfs_reg();
 void tty_register_thread();
 
 void tty_putc(char c);

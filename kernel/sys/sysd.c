@@ -24,38 +24,61 @@ int process_syscall(struct proc* proc) {
             break;
         }
         case SYS_PRINT: {
-            char* pb = kmalloc(proc->regs[2]);
-            memcpy_from_userspace(pb, proc, proc->regs[1], proc->regs[2]);
+            char* pb = kmalloc(proc->regs[2]+1);
+            memcpy_from_userspace(pb, proc, proc->regs[1], proc->regs[2]+1);
             log(pb);
             kfree(pb);
             break;
         }
         case SYS_OPEN: {
-            char* path = kmalloc(sizeof proc->regs[2]);
+            int fd = proc_free_fd(proc);
+            if (fd < 0) {
+                proc->regs[0] = fd;
+                break;
+            }
+
+            char* path = kmalloc(proc->regs[2]);
             memcpy_from_userspace(path, proc, proc->regs[1], proc->regs[2]);
-            int r = vfs_open(path);
+            struct inode* inode = vfs_find_inode(path);
             kfree(path);
-            proc->regs[0] = r;
+            
+            int rc = vfs_open(inode, &proc->open_files[fd]);
+
+            if (rc < 0) {
+                proc->regs[0] = rc;
+                break;
+            }
+
+            proc->regs[0] = fd;
             break;
         }
         case SYS_CLOSE: {
-            int r = vfs_close(proc->regs[1]);
+            if (!validate_fd(proc->regs[1])) {
+                proc->regs[0] = -EBADFD;
+                break;
+            }
+            
+            int r = vfs_close(&proc->open_files[proc->regs[1]]);
+
             proc->regs[0] = r;
             break;
         }
         case SYS_READ: {
-            int flags = vfs_get_vnode_flags(proc->regs[1]);
-            if (flags < 0) {
-                proc->regs[0] = flags;
-                return 1;
+            if (!validate_fd(proc->regs[1])) {
+                proc->regs[0] = -EBADFD;
+                break;
             }
+                
+            struct proc_file* file = &proc->open_files[proc->regs[1]];
+            
+            int flags = file->inode->vnode->reg->flags;
             
             void* ks_buff = NULL;
             if (flags & VFS_REG_FLAG_KERNEL_BUFFER_ONLY) {
                 ks_buff = kmalloc(sizeof proc->regs[3]);
             }
 
-            ssize_t r = vfs_read_async(proc->regs[1], 
+            ssize_t r = vfs_read_async(file, 
                 ks_buff ? 0 : proc->pid, 
                 ks_buff ? ks_buff : (void*)proc->regs[2], 
                 proc->regs[3],
@@ -67,16 +90,18 @@ int process_syscall(struct proc* proc) {
                 if (ks_buff)
                     kfree(ks_buff);
                 proc->regs[0] = r;
-                return 1;
+                break;
             }
             return 0;
         }
         case SYS_WRITE: {
-            int flags = vfs_get_vnode_flags(proc->regs[1]);
-            if (flags < 0) {
-                proc->regs[0] = flags;
-                return 1;
+            if (!validate_fd(proc->regs[1])) {
+                proc->regs[0] = -EBADFD;
+                break;
             }
+            struct proc_file* file = &proc->open_files[proc->regs[1]];
+
+            int flags = file->inode->vnode->reg->flags;
             
             void* ks_buff = NULL;
             if (flags & VFS_REG_FLAG_KERNEL_BUFFER_ONLY) {
@@ -85,7 +110,7 @@ int process_syscall(struct proc* proc) {
                 memcpy_from_userspace(ks_buff, proc, proc->regs[2], proc->regs[3]);
             }
 
-            ssize_t r = vfs_write_async(proc->regs[1], 
+            ssize_t r = vfs_write_async(file, 
                 ks_buff ? 0 : proc->pid, 
                 ks_buff ? ks_buff : (void*)proc->regs[2], 
                 proc->regs[3],
@@ -98,7 +123,7 @@ int process_syscall(struct proc* proc) {
                     kfree(ks_buff);
                 proc->regs[0] = r;
                 // req not allocated
-                return 1;
+                break;
             }
             return 0;
         }
