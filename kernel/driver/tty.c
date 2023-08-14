@@ -8,7 +8,7 @@
 #include <libk/math.h>
 #include <libk/assert.h>
 #include <fs/vfs.h>
-#include <proc/sched.h>\
+#include <proc/sched.h>
 
 static int tty_cursor_col, tty_cursor_row;
 
@@ -148,8 +148,8 @@ void handle_escapes(char c) {
         } else if(c == 'D') {
             tty_cursor_col = MAX(tty_cursor_col-MAX(esc_args[0], 1), 0);
         } else if(c == 'H') {
-            tty_cursor_col = MAX(esc_args[0], VGA_TEXT_WIDTH);
-            tty_cursor_row = MAX(esc_args[1], VGA_TEXT_HEIGHT);
+            tty_cursor_col = MIN(esc_args[0], VGA_TEXT_WIDTH-1);
+            tty_cursor_row = MIN(esc_args[1], VGA_TEXT_HEIGHT-1);
         }
 
         in_escape_code = 0;
@@ -175,6 +175,7 @@ void tty_putc(char c) {
                 break;
             case '\033': // ESC char (this is ^[)
                 in_escape_code = 1;
+                esc_stage = 0;
                 break;
             default:
                 break;

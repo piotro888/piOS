@@ -75,7 +75,7 @@ int process_syscall(struct proc* proc) {
             
             void* ks_buff = NULL;
             if (flags & VFS_REG_FLAG_KERNEL_BUFFER_ONLY) {
-                ks_buff = kmalloc(sizeof proc->regs[3]);
+                ks_buff = kmalloc(proc->regs[3]);
             }
 
             ssize_t r = vfs_read_async(file, 
@@ -106,7 +106,7 @@ int process_syscall(struct proc* proc) {
             void* ks_buff = NULL;
             if (flags & VFS_REG_FLAG_KERNEL_BUFFER_ONLY) {
                 // TODO: validate size
-                ks_buff = kmalloc(sizeof proc->regs[3]);
+                ks_buff = kmalloc(proc->regs[3]);
                 memcpy_from_userspace(ks_buff, proc, proc->regs[2], proc->regs[3]);
             }
 
