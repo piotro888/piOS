@@ -31,8 +31,9 @@ __attribute__((used))
 void _kstart() {
     enable_default_memory_paging();
 
-    //log_set_target(LOG_TARGET_TTY, 1);
     log_set_target(LOG_TARGET_SERIAL, 1);
+    //tty_init_basic();
+    //log_set_target(LOG_TARGET_TTY, 1);
 
     log_early_puts("\033[92mpios\033[97m");
 
@@ -50,8 +51,9 @@ void _kstart() {
     spi_init();
     sd_init();
     kprintf("initializing full tty driver\n");
-    //tty_init_driver();
-    //tty_register_thread();
+    tty_init_basic();
+    tty_init_driver();
+    tty_register_thread();
     kprintf("init done.\n");
     kprintf("happy 100th commit! :)\n");
     kprintf(BOOT_ART);

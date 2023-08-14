@@ -1,4 +1,5 @@
 #include "tty.h"
+#include <string.h>
 #include <driver/vga.h>
 #include <libk/types.h>
 #include <libk/ringbuff.h>
@@ -224,6 +225,8 @@ void __attribute__((noreturn)) tty_driver_thread_write() {
         req->size = MIN(req->size, TTY_SUBMIT_BUFF);
         for (int i=0; i<req->size; i++)
             tty_putc(((char*)req->vbuff)[i]);
+
+        list_remove(&req_write_list, req_write_list.first);
         vfs_async_finalize(req, req->size);
     }
 }
@@ -239,6 +242,8 @@ void __attribute__((noreturn)) tty_driver_thread_read() {
             semaphore_down(&read_data_signal);
         }
         size_t res = ringbuff_read(&read_rb, req->vbuff, req->size);
+
+        list_remove(&req_read_list, req_read_list.first);
         vfs_async_finalize(req, res);
     }
 }
@@ -267,11 +272,19 @@ void tty_direct_write(char* buff, size_t len) {
     struct semaphore* lock = kmalloc(sizeof(struct semaphore));
     struct vfs_async_req_t* req = kmalloc(sizeof(struct vfs_async_req_t));
 
+    char* heap_buff = NULL;
+    if ((unsigned)buff >= 0xf000) {
+        // FIXME: Currently if we are printig from stack, copy it
+        // it would be nice to remap page in driver thread like tar does
+        heap_buff = kmalloc(len);
+        memcpy(heap_buff, buff, len);
+    }
+
     req->type = VFS_ASYNC_TYPE_WRITE;
     req->pid = 0;
     req->req_id = 0;
     req->callback = NULL;
-    req->vbuff = buff;
+    req->vbuff = heap_buff ? heap_buff : buff;
     req->size = len;
     req->flags = 0;
     req->fin_sema = lock;
@@ -282,6 +295,8 @@ void tty_direct_write(char* buff, size_t len) {
 
     kfree(req);
     kfree(lock);
+    if (heap_buff)
+        kfree(heap_buff);
 }
 
 const struct vfs_reg tty_vfs_reg = {

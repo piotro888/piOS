@@ -45,7 +45,7 @@ void internal_log(char* msg, char* opt_fn_name, int opt_fn_line, int opt_err_lev
     va_end(args);
 
     if (LOG_TARGET_MASK & LOG_TARGET_TTY) {
-        if (opt_err_level == 3)
+        if (opt_err_level == 4)
             tty_puts(log_buff); // blocking is not allowed in interrupt disabled sections
         else
             tty_direct_write(log_buff, log_ptr - log_buff + 1);
@@ -76,11 +76,11 @@ void log_set_target(int target, int enable) {
 }
 
 void log_early_putc(char c) {
-    if (LOG_TARGET_MASK & LOG_TARGET_TTY)
-        tty_putc(c);
-    
     if (LOG_TARGET_MASK & LOG_TARGET_SERIAL)
         serial_direct_putc(c);
+
+    if (LOG_TARGET_MASK & LOG_TARGET_TTY)
+        tty_putc(c);
 }
 
 void log_early_puts(char* str) {
