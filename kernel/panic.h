@@ -1,7 +1,7 @@
 #ifndef PANIC_H
 #define PANIC_H
 
-void panic(char* msg);
+_Noreturn void panic(char* msg);
 void print_stacktrace();
 
 #endif

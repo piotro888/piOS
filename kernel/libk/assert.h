@@ -4,9 +4,10 @@
 #include <libk/kprintf.h>
 #include <panic.h>
 
-void __assert(int expr, char* line, int line_nr);
+__attribute__((noreturn)) void __assert_fail(char* line, int line_nr);
 
-#define ASSERT(x) __assert((x), (#x" @ "__FILE__), __LINE__)
-#define ASSERT_NOT_REACHED() __assert(0, "ASSERT NOT REACHED @ "__FILE__, __LINE__)
+// assert macro inspired from musl libc.
+#define ASSERT(x) ((void)((x) || (__assert_fail((#x" @ "__FILE__), __LINE__),0)))
+#define ASSERT_NOT_REACHED() __assert_fail("ASSERT NOT REACHED @ "__FILE__, __LINE__)
 
 #endif

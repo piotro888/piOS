@@ -32,7 +32,7 @@ void interrupt(const int state) {
 
     if(!scheduling_enabled) {
         enable_default_memory_paging();
-        if (state & SFLAG_SYSCALL)
+        if ((*(int*)(state+28-24)) & SFLAG_SEGFAULT)
             kprintf("EARLY KERNEL SEGFAULT!");
         kprintf("pc: %x\n",  *(int*)(state+28-20));
         panic("Kernel interupted before scheduling enabled");
