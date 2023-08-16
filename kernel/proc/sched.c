@@ -4,6 +4,7 @@
 #include <libk/kmalloc.h>
 #include <libk/list.h>
 #include <libk/assert.h>
+#include <proc/virtual.h>
 
 /*
  * Very simple scheduler, just to keep going on threads
@@ -16,7 +17,7 @@ struct list proc_list;
 struct list_node* last_element = NULL;
 
 int scheduling_enabled = 0;
-int handling_interrupt = 0;
+int int_no_proc_modify = 0;
 
 int pid_now = 0;
 
@@ -37,9 +38,11 @@ void scheduler_init() {
     idle_struct.state = PROC_STATE_RUNNABLE;
     idle_struct.type = PROC_TYPE_INIT;
     strcpy(idle_struct.name, "idle");
-    idle_struct.pc = (int)idle_task+1;
-    for(int i=0; i<16; i++)
-        idle_struct.prog_pages[i] = i;
+    idle_struct.proc_state.pc = (int)idle_task+1;
+    for(int i=0; i<16; i++) {
+        idle_struct.proc_state.prog_pages[i] = i;
+        idle_struct.proc_state.mem_pages[i] = ILLEGAL_PAGE;
+    }
 }
 
 /* Set current_proc to next process */
@@ -61,10 +64,10 @@ void sched_pick_next() {
         if(lproc->state == PROC_STATE_RUNNABLE)
             break;
 
-        if(lproc->state == PROC_STATE_BLOCKED) {
+        if(lproc->state == PROC_STATE_BLOCKED || lproc->state == PROC_STATE_SYSCALL_BLOCKED) {
             // check if blocked process is unblocked now
             if(lproc->sema_blocked && lproc->sema_blocked->count > 0) {
-                lproc->state = PROC_STATE_RUNNABLE;
+                lproc->state = lproc->state == PROC_STATE_BLOCKED ? PROC_STATE_RUNNABLE : PROC_STATE_SYSCALL;
                 lproc->sema_blocked = NULL;
                 break;
             }
@@ -81,7 +84,7 @@ void sched_pick_next() {
     
     #ifdef DEBUG
         kprintf("sched pick %s\n", current_proc->name);
-        kprintf("pc=%x page0=>%x\n", current_proc->pc, current_proc->prog_pages[0]);
+        kprintf("pc=%x ppage0=>%x stack=%x\n", current_proc->proc_state.pc, current_proc->proc_state.prog_pages[0], current_proc->proc_state.mem_pages[15]);
     #endif
 }
 
@@ -93,23 +96,23 @@ int make_kernel_thread(char* name, void __attribute__((noreturn)) (*entry)()) {
     p->type = PROC_TYPE_KERNEL;
 
     for(int i=0; i<8; i++)
-        p->regs[i] = 0;
-    p->arith_flags = 0;
+        p->proc_state.regs[i] = 0;
+    p->proc_state.arith_flags = 0;
 
     // set virtual pages to kernel mapping
     for(int i=0; i<16; i++) {
-        p->mem_pages[i] = 0x200 + i;
-        p->prog_pages[i] = i;
+        p->proc_state.mem_pages[i] = 0x200 + i;
+        p->proc_state.prog_pages[i] = i;
     }
-    p->mem_pages[0] = 0; // illegal page
+    p->proc_state.mem_pages[0] = 0; // illegal page
     // set stack page to new page (thread)
-    p->mem_pages[15] = first_free_page++;
+    p->proc_state.mem_pages[15] = first_free_page++;
 
     // setup sp and fp (fe - aligned to 2)
-    p->regs[7] = 0xfffe;
-    p->regs[5] = 0xfffe;
+    p->proc_state.regs[7] = 0xfffe;
+    p->proc_state.regs[5] = 0xfffe;
 
-    p->pc = (int)entry;
+    p->proc_state.pc = (int)entry;
 
     // reset blocked status
     p->sema_blocked = NULL;
@@ -135,21 +138,19 @@ struct proc* sched_init_user_thread() {
     p->type = PROC_TYPE_USER;
 
     for(int i=0; i<8; i++)
-        p->regs[i] = 0;
-    p->arith_flags = 0;
-    p->pc = 0;
+        p->proc_state.regs[i] = 0;
+    p->proc_state.arith_flags = 0;
+    p->proc_state.pc = 0;
 
     // set invalid virtual pages
     for(int i=0; i<16; i++) {
-        p->mem_pages[i] = 0xff;
-        p->prog_pages[i] = 0xff;
+        p->proc_state.mem_pages[i] = 0xff; //emm?
+        p->proc_state.prog_pages[i] = 0xff;
     }
 
     // allocate stack page
-    p->mem_pages[15] = first_free_page++;
-    // sp & fp
-    p->regs[7] = 0xfffe;
-    p->regs[5] = 0xfffe;
+    p->proc_state.mem_pages[15] = first_free_page++;
+    p->kernel_stack_page = first_free_page++;
 
     // initialize fd table as free
     for(int i=0; i<PROC_MAX_FILES; i++)

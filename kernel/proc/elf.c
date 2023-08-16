@@ -81,7 +81,7 @@ void load_to_page(struct proc_file* file, size_t off, size_t end_addr, int page,
 
     size_t m_addr = off;
     while (m_addr <= end_addr) {
-        size_t read = vfs_read_blocking(file, load_buff, MIN(LOAD_BUFF, (end_addr - m_addr + 1)));
+        size_t read = vfs_read_blocking(file, 0, load_buff, MIN(LOAD_BUFF, (end_addr - m_addr + 1)));
         ASSERT(read);
 
         if(prog)
@@ -113,24 +113,24 @@ int phys_page_to_load(struct proc* proc, u16 vaddr, int prog) {
         
         // INSTR PAGE entry is 11 bit wide MEMORY PAGE ENTRY 12 bit wide
         // So, instruction page index is vaddr>>11
-        if (proc->prog_pages[virt_page/2] == 0xff)
-            proc->prog_pages[virt_page/2] = first_free_prog_page++;
-        log_dbg("prog page virt_page=%x dst=%x ffp=%x pp[%x]=%x", virt_page, proc->prog_pages[virt_page], first_free_page, virt_page/2, proc->prog_pages[virt_page/2]);
+        if (proc->proc_state.prog_pages[virt_page/2] == 0xff)
+            proc->proc_state.prog_pages[virt_page/2] = first_free_prog_page++;
+        log_dbg("prog page virt_page=%x dst=%x ffp=%x pp[%x]=%x", virt_page, proc->proc_state.prog_pages[virt_page], first_free_page, virt_page/2, proc->proc_state.prog_pages[virt_page/2]);
         
         // We shall return corresponding DATA page, which is: assigned phys page << 1 | MSB of non-page part in INSTR space + INSTR region start page
-        return ((proc->prog_pages[virt_page / 2] << 1) | (virt_page & 1)) + (0x800<<1);
+        return ((proc->proc_state.prog_pages[virt_page / 2] << 1) | (virt_page & 1)) + (0x800<<1);
     } else {
         // load to ram mem is the same as read
-        if (proc->mem_pages[virt_page] == 0xff)
-            proc->mem_pages[virt_page] = first_free_page++;
-        log_dbg("mem page virt_page=%x dst=%x ffp=%x", virt_page, proc->mem_pages[virt_page], first_free_page);
-        return proc->mem_pages[virt_page];
+        if (proc->proc_state.mem_pages[virt_page] == 0xff)
+            proc->proc_state.mem_pages[virt_page] = first_free_page++;
+        log_dbg("mem page virt_page=%x dst=%x ffp=%x", virt_page, proc->proc_state.mem_pages[virt_page], first_free_page);
+        return proc->proc_state.mem_pages[virt_page];
     }
 }
 
 void load_ph(struct proc_file* file, char* ph, struct proc* proc) {
     for(size_t i=0; i<GET_U16(buff, EH_OFF_PHNUM); i++) {
-        vfs_read_blocking(file, ph, PH_SIZE);
+        vfs_read_blocking(file, 0, ph, PH_SIZE);
         size_t next_ph = vfs_seek(file, 0, SEEK_CUR);
 
         if(GET_U16(ph, PH_OFF_TYPE) == PT_LOAD) {
@@ -181,7 +181,7 @@ void load_ph(struct proc_file* file, char* ph, struct proc* proc) {
 }
 
 int elf_load(struct proc_file* file) {
-    if (vfs_read_blocking(file, buff, HEADER_SIZE) != HEADER_SIZE) {
+    if (vfs_read_blocking(file, 0, buff, HEADER_SIZE) != HEADER_SIZE) {
         log("Elf: file too short");
         return -1;
     }
@@ -214,7 +214,7 @@ int elf_load(struct proc_file* file) {
 
     strcpy(proc->name, "uproc");
 
-    proc->pc = GET_U16(buff, EH_OFF_ENTRY);
+    proc->proc_state.pc = GET_U16(buff, EH_OFF_ENTRY);
 
     vfs_seek(file, phoff, SEEK_SET);
     load_ph(file, ph_buff, proc);

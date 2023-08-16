@@ -59,10 +59,8 @@ int vfs_close(struct proc_file* inode);
 ssize_t vfs_read_async(struct proc_file* file, int vpid, void* buff, size_t size, void (*callback)(), int rid);
 ssize_t vfs_write_async(struct proc_file* file, int vpid, void* buff, size_t size, void (*callback)(), int rid);
 
-// blocking wrappers for kernel threads
-// or inode with offset
-ssize_t vfs_read_blocking(struct proc_file* file, void* buff, size_t size);
-ssize_t vfs_write_blocking(struct proc_file* file, void* buff, size_t size);
+ssize_t vfs_read_blocking(struct proc_file* file, int vpid, void* buff, size_t size);
+ssize_t vfs_write_blocking(struct proc_file* file, int vpid, void* buff, size_t size);
 
 ssize_t vfs_seek(struct proc_file* file, ssize_t off, int whence);
 

@@ -28,7 +28,10 @@ void semaphore_down(struct semaphore* s) {
     ASSERT(count >= 0);
 
     if(count == 0) {
-        current_proc->state = PROC_STATE_BLOCKED;
+        if (current_proc->state == PROC_STATE_SYSCALL)
+            current_proc->state = PROC_STATE_SYSCALL_BLOCKED;
+        else
+            current_proc->state = PROC_STATE_BLOCKED;
         current_proc->sema_blocked = s;
 
         do {

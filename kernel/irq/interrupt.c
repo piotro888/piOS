@@ -1,5 +1,6 @@
 #include "interrupt.h"
 
+#include <string.h>
 #include <libk/kprintf.h>
 #include <driver/keyboard.h>
 #include <libk/assert.h>
@@ -14,12 +15,25 @@
 #define SFLAG_SYSCALL 0x2
 #define SFLAG_SEGFAULT 0x8
 
-static int processing_interrupt = 0;
+static int in_interrupt_handler = 0;
+
+extern void int_sys_init(int stack_page);
+
+#define IN_KERNEL(proc) ((proc)->type == PROC_TYPE_KERNEL  \
+    || (proc)->state == PROC_STATE_SYSCALL || (proc)->state == PROC_STATE_SYSCALL_BLOCKED)
+
+
+struct int_handler_state {
+    unsigned regs[8];
+    unsigned pc;
+    unsigned arith_flags;
+    unsigned irq_flags;
+};
 
 /* Interrupt handler called from irq.s */
 __attribute__((used))
-void interrupt(const int state) {
-    if (processing_interrupt) {
+void interrupt(struct int_handler_state* state) {
+    if (in_interrupt_handler) {
         // detect unexpected faults in interrupt processing
         __asm__ volatile (
             "__double_fault:\n"
@@ -28,47 +42,42 @@ void interrupt(const int state) {
         );
         __builtin_unreachable();
     }
-    processing_interrupt = 1;
+    in_interrupt_handler = 1;
 
     if(!scheduling_enabled) {
         enable_default_memory_paging();
-        if ((*(int*)(state+28-24)) & SFLAG_SEGFAULT)
+        if (state->irq_flags & SFLAG_SEGFAULT)
             kprintf("EARLY KERNEL SEGFAULT!");
         kprintf("pc: %x\n",  *(int*)(state+28-20));
         panic("Kernel interupted before scheduling enabled");
     }
 
-    // save thread state
-    for(int i=0; i<8; i++)
-        current_proc->regs[i] = *(int*)(state+28-(4+2*i));
-    current_proc->pc =          *(int*)(state+28-20);
-    current_proc->arith_flags = *(int*)(state+28-22);
-
-    u16 status_flag = (*(int*)(state+28-24));
-
+    // default kernel stack pointer is used
     enable_default_memory_paging();
-    handling_interrupt = 1;
+    int_no_proc_modify = 1;
+
+    // save state in current proc
+    for(int i=0; i<8; i++)
+        current_proc->proc_state.regs[i] = state->regs[i];
+    
+    current_proc->proc_state.pc = state->pc;
+    current_proc->proc_state.arith_flags = state->arith_flags;
 
     // Thread should be only switched on syscall and timer interrupts
     int should_switch_thread = 0;
- 
-    if((status_flag & SFLAG_SYSCALL) && (current_proc->type == PROC_TYPE_USER || current_proc->type == PROC_TYPE_PRIV)) {
-        log_irq("syscall: r0 %d pc 0x%x", current_proc->regs[0], current_proc->pc);
-        sysd_submit(current_proc->pid);
-        should_switch_thread = 1;
-    }
 
-    if(status_flag & SFLAG_SEGFAULT) {
-        log_irq("SEGFAULT! pc: %x", current_proc->pc);
+    if(state->irq_flags & SFLAG_SEGFAULT) {
+        log_irq("SEGFAULT! pc: %x", current_proc->proc_state.pc);
         log_irq("PID: %d DUMP r0:0x%x r1:0x%x r2:0x%x r3:0x%x r4:0x%x r5:0x%x r6:0x%x r7:0x%x vpc:0x%x",
-                current_proc->pid, current_proc->regs[0], current_proc->regs[1], current_proc->regs[2], current_proc->regs[3], current_proc->regs[4], current_proc->regs[5],
-                current_proc->regs[6], current_proc->regs[7], current_proc->pc);
-        if (current_proc->type != PROC_TYPE_KERNEL)
+                current_proc->pid, current_proc->proc_state.regs[0], current_proc->proc_state.regs[1], current_proc->proc_state.regs[2],
+                current_proc->proc_state.regs[3], current_proc->proc_state.regs[4], current_proc->proc_state.regs[5],
+                current_proc->proc_state.regs[6], current_proc->proc_state.regs[7], current_proc->proc_state.pc);
+        if (IN_KERNEL(current_proc))
             panic("SEGFAULT INSIDE KERNEL");
     }
 
     /* syscall from thread is always just YIELD */
-    if((status_flag & SFLAG_SYSCALL) && current_proc->type == PROC_TYPE_KERNEL) {
+    if((state->irq_flags & SFLAG_SYSCALL) && IN_KERNEL(current_proc)) {
         should_switch_thread = 1;
     }
 
@@ -89,7 +98,13 @@ void interrupt(const int state) {
         should_switch_thread = 1;
     }
 
-    processing_interrupt = 0;
+    if((state->irq_flags & SFLAG_SYSCALL) && !IN_KERNEL(current_proc)) {
+        // init syscall processing kernel thread with new stack
+        int_sys_init(current_proc->kernel_stack_page);
+        ASSERT_NOT_REACHED();
+    }
+
+    in_interrupt_handler = 0;
 
     if(scheduling_enabled) {
         if(should_switch_thread)
@@ -103,6 +118,41 @@ void interrupt(const int state) {
      * i.e. before scheduling (when kernel is booting before threads)
      */
     ASSERT(!scheduling_enabled);
+}
+
+// called from int_sys_init with new clear stack
+_Noreturn void int_sys_call() {
+    in_interrupt_handler = 0;
+
+    // store syscall state
+    memcpy(&current_proc->syscall_state, &current_proc->proc_state, sizeof(struct proc_state));
+    
+    for (int i=0; i<16; i++) {
+        current_proc->proc_state.mem_pages[i] = i;
+        current_proc->proc_state.prog_pages[i] = 0x200+i;
+    }
+    current_proc->proc_state.mem_pages[0] = ILLEGAL_PAGE;
+    current_proc->proc_state.mem_pages[15] = current_proc->kernel_stack_page;
+
+    // enable process as kernel thread
+    current_proc->state = PROC_STATE_SYSCALL;
+
+    int_no_proc_modify = 0;
+    int_enable();
+
+    log("syscall %x", current_proc->syscall_state.regs[0]);
+    process_syscall(&current_proc->syscall_state);
+    log("end %x", current_proc->syscall_state.regs[0]);    
+
+    // recover user state and return
+    int_disable();
+    int_no_proc_modify = 1;
+    memcpy(&current_proc->proc_state, &current_proc->syscall_state, sizeof(struct proc_state));
+
+    current_proc->state = PROC_STATE_RUNNABLE;
+    
+    switch_to_userspace(current_proc);
+    ASSERT_NOT_REACHED();
 }
 
 /* Enable interrupts in CPU */

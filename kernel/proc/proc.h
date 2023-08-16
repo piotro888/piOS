@@ -13,6 +13,17 @@ struct proc_file {
     unsigned fcntl_flags;
 };
 
+struct proc_state {
+    int regs[8];
+    int pc;
+    int arith_flags;
+
+    // paging
+    int mem_pages[16];
+    int prog_pages[16];
+};
+
+
 struct proc {
     int pid;
 
@@ -20,15 +31,13 @@ struct proc {
     int type;
 
     // process saved state
-    int regs[8];
-    int pc;
-    int arith_flags;
-    // paging
-    int mem_pages[16];
-    int prog_pages[16];
+    struct proc_state proc_state;
+    struct proc_state syscall_state;
 
     // short proc name
     char name[16];
+
+    int kernel_stack_page;
 
     struct proc_file open_files[PROC_MAX_FILES];
 
@@ -40,6 +49,7 @@ struct proc {
 #define PROC_STATE_RUNNABLE 1
 #define PROC_STATE_BLOCKED 2
 #define PROC_STATE_SYSCALL 3
+#define PROC_STATE_SYSCALL_BLOCKED 4
 
 // init process skips virtual memory (spins in kernel loop and handles interrupts, not selected by scheduler)
 #define PROC_TYPE_INIT 0

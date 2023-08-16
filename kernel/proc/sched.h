@@ -6,7 +6,7 @@
 extern struct proc* current_proc;
 
 extern int scheduling_enabled;
-extern int handling_interrupt;
+extern int int_no_proc_modify;
 extern int first_free_page, first_free_prog_page;
 
 void scheduler_init();

@@ -52,7 +52,7 @@ ssize_t vfs_close (struct proc_file* file) {
     return 0;
 }
 
-ssize_t vfs_read_blocking(struct proc_file* file, void* buff, size_t size) {
+ssize_t vfs_read_blocking(struct proc_file* file, int pid, void* buff, size_t size) {
     if(!file->inode)
         return -EBADFD;
     if(!file->inode->vnode->reg->async_request)
@@ -62,7 +62,7 @@ ssize_t vfs_read_blocking(struct proc_file* file, void* buff, size_t size) {
     struct vfs_async_req_t* req = kmalloc(sizeof(struct vfs_async_req_t));
     req->file = file;
     req->type = VFS_ASYNC_TYPE_READ;
-    req->pid = 0;
+    req->pid = pid;
     req->req_id = ++req_id;
     req->callback = NULL;
     req->vbuff = buff;
@@ -89,7 +89,7 @@ ssize_t vfs_read_blocking(struct proc_file* file, void* buff, size_t size) {
     return res;
 }
 
-ssize_t vfs_write_blocking(struct proc_file* file, void* buff, size_t size) {
+ssize_t vfs_write_blocking(struct proc_file* file, int pid, void* buff, size_t size) {
     if(!file->inode)
         return -EBADFD;
     if(!file->inode->vnode->reg->async_request)
@@ -99,7 +99,7 @@ ssize_t vfs_write_blocking(struct proc_file* file, void* buff, size_t size) {
     struct vfs_async_req_t* req = kmalloc(sizeof(struct vfs_async_req_t));
     req->file = file;
     req->type = VFS_ASYNC_TYPE_WRITE;
-    req->pid = 0;
+    req->pid = pid;
     req->req_id = ++req_id;
     req->callback = NULL;
     req->vbuff = buff;
