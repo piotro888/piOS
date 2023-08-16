@@ -4,14 +4,15 @@ AR := ~/llvm-project/rbuild/bin/llvm-ar
 CFLAGS := -target pcpu -integrated-as -Iinclude/ -fno-signed-char -std=c99 -O2 -ffreestanding -Wall -Wextra -pedantic
 CFLAGS_WNO :=  -Wno-strict-prototypes -Wno-language-extension-token -Wno-gnu-binary-literal -Wno-language-extension-token -Wno-gnu-zero-variadic-macro-arguments
 LIBC_FLAGS := -D __LIBC__ -D __LIBC_USERSPACE__
-LIBC_K_FLAGS := -D __LIBC__ -D __LIBC_KERNEL__
+LIBC_K_FLAGS := -D __LIBC__ -D __LIBC_KERNEL__ -fno-zero-initialized-in-bss
 
 
 SOURCES_U=\
-	string.c
+	string.c \
+	sys.c
 
 SOURCES_K=\
-	string.c	
+	string.c
 
 
 OBJS=$(patsubst %, build/%.o, $(SOURCES_U))

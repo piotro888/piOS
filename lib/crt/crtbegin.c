@@ -15,23 +15,6 @@
 
 #include <stddef.h>
 
-unsigned int syscall_rawx(unsigned int p0, unsigned int p1, unsigned int p2, unsigned int p3, unsigned int p4) {
-    unsigned int ret;
-    asm volatile (
-        " ldo r0, %1 \n"
-        " ldo r1, %2 \n"
-        " ldo r2, %3 \n"
-        " ldo r3, %4 \n"
-        " ldo r6, %5 \n"
-        " sys \n"
-        " mov %0, r0 \n"
-        : "=r"(ret)
-        : "m"(p0), "m"(p1), "m"(p2), "m"(p3), "m"(p4)
-        : "r0", "r1", "r2", "r3", "r6");
-    return ret;
-}
-
-
 __attribute__((visibility("hidden"))) void *__dso_handle = &__dso_handle;
 
 #ifdef EH_USE_FRAME_REGISTRY
@@ -65,8 +48,7 @@ static void __attribute__((used)) __do_init(void) {
 #endif
 #ifndef CRT_HAS_INITFINI_ARRAY
   const size_t n = __CTOR_LIST_END__ - __CTOR_LIST__ - 1;
-  syscall_rawx(0,3,n,0,0);
-  for (size_t i = n; i >= 1; i--) {syscall_rawx(0,4,(unsigned int)__CTOR_LIST__[i],0,0);__CTOR_LIST__[i]();}
+  for (size_t i = n; i >= 1; i--) {__CTOR_LIST__[i]();}
 #endif
 }
 
