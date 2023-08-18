@@ -117,7 +117,7 @@ core1_interrupt_handler:
 .global int_sys_init
 #endif
 int_sys_init:
-    srl r0, 0x20f ; switch to new stack
+    srs r0, 0x20f ; switch to new stack
     ldi r7, 0xfffe
     ldi r5, 0xfffe
     ldi r0, 0

@@ -61,7 +61,7 @@ void sched_pick_next() {
         struct proc* lproc = (struct proc*)last_element->val;
 
         // this process is valid to run
-        if(lproc->state == PROC_STATE_RUNNABLE)
+        if(lproc->state == PROC_STATE_RUNNABLE || lproc->state == PROC_STATE_SYSCALL)
             break;
 
         if(lproc->state == PROC_STATE_BLOCKED || lproc->state == PROC_STATE_SYSCALL_BLOCKED) {

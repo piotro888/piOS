@@ -99,7 +99,7 @@ void interrupt(struct int_handler_state* state) {
     }
 
     if((state->irq_flags & SFLAG_SYSCALL) && !IN_KERNEL(current_proc)) {
-        // init syscall processing kernel thread with new stack
+        // set up syscall processing thread in kernel with new stack
         int_sys_init(current_proc->kernel_stack_page);
         ASSERT_NOT_REACHED();
     }
@@ -128,8 +128,8 @@ _Noreturn void int_sys_call() {
     memcpy(&current_proc->syscall_state, &current_proc->proc_state, sizeof(struct proc_state));
     
     for (int i=0; i<16; i++) {
-        current_proc->proc_state.mem_pages[i] = i;
-        current_proc->proc_state.prog_pages[i] = 0x200+i;
+        current_proc->proc_state.mem_pages[i] = 0x200+i;
+        current_proc->proc_state.prog_pages[i] = i;
     }
     current_proc->proc_state.mem_pages[0] = ILLEGAL_PAGE;
     current_proc->proc_state.mem_pages[15] = current_proc->kernel_stack_page;
