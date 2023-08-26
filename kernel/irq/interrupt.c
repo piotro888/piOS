@@ -150,7 +150,11 @@ _Noreturn void int_sys_call() {
     memcpy(&current_proc->proc_state, &current_proc->syscall_state, sizeof(struct proc_state));
 
     current_proc->state = PROC_STATE_RUNNABLE;
-    
+
+    // switch_to_userspace expects calls from interrupt handler.
+    // syscall kernel process, when resumed from sheduler, has program paging set
+    // and executing switch from running process breaks it
+    disable_program_paging();
     switch_to_userspace(current_proc);
     ASSERT_NOT_REACHED();
 }

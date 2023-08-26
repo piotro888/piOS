@@ -156,6 +156,16 @@ enable_default_memory_paging_asm:
 
     srs r6, 0
 
+#ifndef PAS_DIRS
+.global disable_program_paging
+#endif
+disable_program_paging:
+    srl r0, 2
+    ani r0, r0, 0xfffe
+    srs r0, 2
+    jmp __jmp_buff_trigger
+    __jmp_buff_trigger:
+    srs r6, 0
 
 #ifndef PAS_DIRS
 .global idle_task

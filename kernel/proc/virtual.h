@@ -16,6 +16,7 @@ void enable_paging();
 void enable_default_memory_paging();
 void disable_paging();
 void map_page_zero(int ext_page);
+extern void disable_program_paging();
 
 unsigned int get_proc_addr_page(int pid, void* addr);
 
