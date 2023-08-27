@@ -50,7 +50,7 @@ void load_into_userspace_program(int page, void* data, size_t size, size_t offse
     ASSERT(!(size&0b11)); // aligned to full instructions
 
     map_page_zero(page);
-    memcpy((void*)offset, data, size*2); //WHY????? TRY REMOVING IN A MM
+    memcpy((void*)offset, data, size);
     map_page_zero(ILLEGAL_PAGE);
 }
 

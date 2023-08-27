@@ -13,8 +13,7 @@ void blockq_init(struct blockq* s, size_t size, size_t base_size) {
     semaphore_init(&s->not_full);
     s->not_full.count = s->max_size;
 
-    spinlock_init(&s->read_lock);
-    spinlock_init(&s->write_lock);
+    spinlock_init(&s->queue_lock);
 
     s->size = 0;
 }
@@ -22,14 +21,15 @@ void blockq_init(struct blockq* s, size_t size, size_t base_size) {
 void blockq_pop(struct blockq* s, void* buff) {
     semaphore_down(&s->not_empty);
 
-    spinlock_lock(&s->read_lock);
+    spinlock_lock(&s->queue_lock);
+
     ASSERT(s->size > 0);
     size_t rb = ringbuff_read(&s->rbuff, buff, s->base_size);
     ASSERT(rb == s->base_size);
     s->size--;
-    spinlock_unlock(&s->read_lock);
 
     semaphore_up(&s->not_full);
+    spinlock_unlock(&s->queue_lock);
 }
 
 void blockq_push(struct blockq* s, void* buff) {
@@ -38,14 +38,15 @@ void blockq_push(struct blockq* s, void* buff) {
 
     semaphore_down(&s->not_full);
 
-    spinlock_lock(&s->write_lock);
+    spinlock_lock(&s->queue_lock);
+
     size_t wb = ringbuff_write(&s->rbuff, buff, s->base_size);
     ASSERT(wb == s->base_size);
     s->size++;
     ASSERT(s->size <= s->max_size);
-    spinlock_unlock(&s->write_lock);
 
     semaphore_up(&s->not_empty);
+    spinlock_unlock(&s->queue_lock);
 }
 
 void blockq_push_nonblock(struct blockq* s, void* buff) {
