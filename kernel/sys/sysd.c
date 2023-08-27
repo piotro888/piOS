@@ -1,5 +1,7 @@
 #include "sysd.h"
 
+#include <sys/systructs.h>
+
 #include <driver/tty.h>
 #include <proc/sched.h>
 #include <proc/virtual.h>
@@ -112,6 +114,50 @@ int process_syscall(struct proc_state* state) {
                 kfree(ks_buff);
             state->regs[0] = r;
             // req not allocated
+            break;
+        }
+        case SYS_PROCINFO: {
+            struct sys_proc_info proc_info;
+            
+            struct proc* proc = current_proc;
+            if (state->regs[1])
+                proc = proc_by_pid(state->regs[1]);
+            if (!proc) {
+                state->regs[0] = -ENOTFOUND;
+                break;
+            }
+
+            proc_info.pid = proc->pid;
+            proc_info.type = proc->type;
+            proc_info.state = proc->state;
+            proc_info.mem_pages_mapped = 0;
+            proc_info.prog_pages_mapped = 0;
+            for (int i=0; i<16; i++) {
+                if (proc->syscall_state.mem_pages[i] && proc->syscall_state.mem_pages[i] != 0xff)
+                    proc_info.mem_pages_mapped |= (1u<<i);
+                if (proc->syscall_state.prog_pages[i])
+                    proc_info.prog_pages_mapped |= (1u<<i);
+            }
+            proc_info.load_brk = proc->load_brk;
+            
+            memcpy_to_userspace(current_proc, state->regs[2], &proc_info, sizeof(proc_info));
+
+            state->regs[0] = 0;
+            break;
+        }
+        case SYS_PGMAP: {
+            if (state->regs[1] < 0 || state->regs[1] >= 16) {
+                state->regs[0] = -EINVAL;
+                break;
+            }
+            if(current_proc->syscall_state.mem_pages[state->regs[1]] != 0xff && current_proc->syscall_state.mem_pages[state->regs[1]] != 0) {
+                state->regs[0] = -ENOTFOUND;
+                break;
+            }
+
+            // TODO: thread safety on first free page
+            current_proc->syscall_state.mem_pages[state->regs[1]] = first_free_page++;
+            state->regs[0] = 0;
             break;
         }
         default: {

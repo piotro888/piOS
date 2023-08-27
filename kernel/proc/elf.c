@@ -129,6 +129,7 @@ int phys_page_to_load(struct proc* proc, u16 vaddr, int prog) {
 }
 
 void load_ph(struct proc_file* file, char* ph, struct proc* proc) {
+    size_t load_brk = 0;
     for(size_t i=0; i<GET_U16(buff, EH_OFF_PHNUM); i++) {
         vfs_read_blocking(file, 0, ph, PH_SIZE);
         size_t next_ph = vfs_seek(file, 0, SEEK_CUR);
@@ -148,6 +149,9 @@ void load_ph(struct proc_file* file, char* ph, struct proc* proc) {
 
             log_dbg("hdr: memsz %x vaddr %x %x mem_start %x end_addr %x", mem_size, vaddr, vaddr % PAGE_SIZE, mem_start, end_addr);
             
+            if(!prog && zero_mem_size)
+                load_brk = MAX(load_brk, vaddr+zero_mem_size);
+
             // all adresses are in byte indexed memory (and are written in that manner). 1 instruction takes 4 bytes
             // PAGE_SIZE is a limit of page map to load in all cases (byte addressed)
 
@@ -174,10 +178,10 @@ void load_ph(struct proc_file* file, char* ph, struct proc* proc) {
                     vaddr += size;
                 }
             }
-
         }
         vfs_seek(file, next_ph, SEEK_SET);
     }
+    proc->load_brk = (void*)load_brk;
 }
 
 int elf_load(struct proc_file* file) {

@@ -43,6 +43,8 @@ struct proc {
 
     // blocking support
     struct semaphore* sema_blocked;
+
+    void* load_brk;
 };
 
 #define PROC_STATE_UNLOADED 0

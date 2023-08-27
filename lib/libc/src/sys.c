@@ -28,11 +28,11 @@ void __attribute__((always_inline)) sys_dump() {
     );
 }
 
-void sys_print(char* str) {
+void sys_print(const char* str) {
     syscall_raw(SYS_PRINT, (int)str, strlen(str), 0, 0);
 }
 
-int sys_open(char* path) {
+int sys_open(const char* path) {
     return syscall_raw(SYS_OPEN, (int)path, strlen(path), 0, 0);
 }
 
@@ -44,6 +44,14 @@ int sys_read(int fd, void* buff, size_t size) {
     return syscall_raw(SYS_READ, fd, (int)buff, size, 0);
 }
 
-int sys_write(int fd, void* buff, size_t size) {
+int sys_write(int fd, const void* buff, size_t size) {
     return syscall_raw(SYS_WRITE, fd, (int)buff, size, 0);
+}
+
+int sys_procinfo(unsigned pid, struct sys_proc_info* proc_info) {
+    return syscall_raw(SYS_PROCINFO, pid, (int)proc_info, 0, 0);
+}
+
+int sys_pgmap(int page) {
+    return syscall_raw(SYS_PGMAP, page, 0, 0, 0);
 }
