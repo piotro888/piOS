@@ -1,13 +1,16 @@
 CC := ~/llvm-project/rbuild/bin/clang
 AR := ~/llvm-project/rbuild/bin/llvm-ar
 
-CFLAGS := -target pcpu -integrated-as -Iinclude/ -fno-signed-char -std=c99 -O2 -ffreestanding -Wall -Wextra -pedantic
+CFLAGS := -target pcpu -integrated-as -Iinclude/ -fno-signed-char -std=c99 -O2 -ffreestanding -Wall -Wextra -pedantic -fno-use-init-array
 CFLAGS_WNO :=  -Wno-strict-prototypes -Wno-language-extension-token -Wno-gnu-binary-literal -Wno-language-extension-token -Wno-gnu-zero-variadic-macro-arguments
 LIBC_FLAGS := -D __LIBC__ -D __LIBC_USERSPACE__
 LIBC_K_FLAGS := -D __LIBC__ -D __LIBC_KERNEL__ -fno-zero-initialized-in-bss
 
 
 SOURCES_U=\
+	initfini.c \
+	mem.c \
+	stdio.c \
 	string.c \
 	sys.c
 

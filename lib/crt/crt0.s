@@ -14,7 +14,7 @@ __start:
     sto r1, r7, 4
 
     ; interal library init
-	; jal r6, _libc_init
+	jal r6, __libc_init
 
     ; global constructors
 	jal r6, _init
@@ -33,6 +33,9 @@ __start:
 	; and run
 	jal r6, main
 
-	; TODO: call exit, _fini
+    jal r6, _fini
+    jal r6, __libc_fini
+
+	; TODO: call exit syscall
     exit_loop:
         jmp exit_loop
