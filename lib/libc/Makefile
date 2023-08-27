@@ -10,6 +10,7 @@ LIBC_K_FLAGS := -D __LIBC__ -D __LIBC_KERNEL__ -fno-zero-initialized-in-bss
 SOURCES_U=\
 	initfini.c \
 	mem.c \
+	printf.c \
 	stdio.c \
 	string.c \
 	sys.c

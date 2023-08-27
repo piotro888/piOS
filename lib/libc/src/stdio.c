@@ -110,14 +110,16 @@ size_t fwrite(const void *buffer, size_t _size, size_t nmemb, FILE *stream) {
     size_t size = _size*nmemb; 
 
     int write_to_buff = (
-        stream->buff_type != __FILE_BUFF_TYPE_UNBUFF 
+        stream->buff_type != __FILE_BUFF_TYPE_UNBUFF
         && stream->buff_clen + size <= stream->buff_size
     );
 
     if (stream->buff_type == __FILE_BUFF_TYPE_LINEBUFF) {
+        const unsigned char* __cb = buffer;
         for (unsigned i=0; i<size; i++) {
-            if (*(unsigned int*)stream->buff+i == (unsigned int) '\n') {
+            if (__cb[i] == (unsigned char) '\n') {
                 write_to_buff = 0;
+                break;
             }
         }
     }

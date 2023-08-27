@@ -23,5 +23,17 @@ extern FILE* stdin;
 extern FILE* stdout;
 extern FILE* stderr;
 
+#include <stdarg.h>
+
+int vfprintf( FILE *stream, const char *format, va_list vlist );
+int vsnprintf( char *restrict buffer, size_t bufsz, const char *restrict format, va_list vlist );
+
+int fprintf( FILE *stream, const char *format, ... );
+int snprintf( char *restrict buffer, size_t bufsz, const char *restrict format, ... );
+
+int sprintf( char *restrict buffer, const char *restrict format, ... );
+int printf( const char * format, ... );
+
+int vprintf( const char * format, va_list vlist );
 
 #endif
