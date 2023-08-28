@@ -94,6 +94,7 @@ void load_to_page(struct proc_file* file, size_t off, size_t end_addr, int page,
 }
 
 void zero_page(size_t off, size_t len, int page) {
+    log_dbg("load bss off=%x end=%x page=%x prog=%x", off, len, page);
     ASSERT(off+len <= PAGE_SIZE);
 
     map_page_zero(page);
@@ -138,6 +139,7 @@ void load_ph(struct proc_file* file, char* ph, struct proc* proc) {
             u16 flags = GET_U16(ph, PH_OFF_FLAGS);
             int prog = (flags & PF_X) != 0;
 
+#define DEBUG
             vfs_seek(file, GET_U16(ph, PH_OFF_OFFSET), SEEK_SET);
             size_t mem_size = GET_U16(ph, PH_OFF_FILESZ);
             size_t zero_mem_size = GET_U16(ph, PH_OFF_MEMSZ);
@@ -173,7 +175,7 @@ void load_ph(struct proc_file* file, char* ph, struct proc* proc) {
 
             if(!prog && mem_size < zero_mem_size) {
                 while (vaddr < mem_start+zero_mem_size) {
-                    size_t size = MIN((PAGE_SIZE-vaddr), mem_start+zero_mem_size-vaddr);
+                    size_t size = MIN((PAGE_SIZE - (vaddr % PAGE_SIZE)), mem_start+zero_mem_size-vaddr);
                     zero_page(vaddr%PAGE_SIZE, size, phys_page_to_load(proc, vaddr, prog));
                     vaddr += size;
                 }
@@ -182,6 +184,7 @@ void load_ph(struct proc_file* file, char* ph, struct proc* proc) {
         vfs_seek(file, next_ph, SEEK_SET);
     }
     proc->load_brk = (void*)load_brk;
+    log_dbg("elf break: 0x%x", proc->load_brk);
 }
 
 int elf_load(struct proc_file* file) {
@@ -216,7 +219,7 @@ int elf_load(struct proc_file* file) {
     // Load program
     struct proc* proc = sched_init_user_thread();
 
-    strcpy(proc->name, "uproc");
+    strcpy(proc->name, file->inode->name);
 
     proc->proc_state.pc = GET_U16(buff, EH_OFF_ENTRY);
 
