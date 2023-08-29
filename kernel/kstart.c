@@ -5,6 +5,7 @@
  */
 
 #include <art.h>
+#include <driver/keyboard.h>
 #include <driver/sd.h>
 #include <driver/spi.h>
 #include <driver/tty.h>
@@ -49,6 +50,7 @@ void _kstart() {
     kprintf("initializing devices\n");
     spi_init();
     sd_init();
+    keyboard_init();
     kprintf("initializing full tty driver\n");
     tty_init_basic();
     tty_init_driver();

@@ -19,6 +19,7 @@ void vga_put_char_at(char c, int row, int col) {
     map_page_zero((u16)vga_char_addr>>12);
     vga_char_addr = (volatile u16*)((u16)vga_char_addr&0x0fff);
     *vga_char_addr = char_value;
+    map_page_zero(ILLEGAL_PAGE);
 }
 
 /* Set tty color for new text 4 msb-bg color 4 lsb-fg color */
@@ -34,6 +35,7 @@ void vga_clear_line(int row) {
         *vga_ptr_p = 0;
         vga_ptr++;
     }
+    map_page_zero(ILLEGAL_PAGE);
 }
 
 void vga_clear_screen() {
@@ -44,6 +46,7 @@ void vga_clear_screen() {
         *vga_ptr_p = 0;
         vga_ptr++;
     }
+    map_page_zero(ILLEGAL_PAGE);
 }
 
 void vga_fast_scroll() {
@@ -51,6 +54,7 @@ void vga_fast_scroll() {
     map_page_zero(0xc);
     *(volatile u16*) 0x2 = vga_scroll_begin;
     vga_clear_line(VGA_TEXT_HEIGHT-1);
+    map_page_zero(ILLEGAL_PAGE);
 }
 
 void vga_init() {
@@ -64,4 +68,5 @@ void vga_init() {
     volatile u16* vga_fast_scroll = (volatile u16*) 0x2;
     *vga_fast_scroll = vga_scroll_begin;
     vga_clear_screen();
+    map_page_zero(ILLEGAL_PAGE);
 }

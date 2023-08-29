@@ -85,5 +85,6 @@ void rootfs_create(struct vnode* self) {
     log("mounting system devices");
     vfs_mount(tty_get_vfs_reg(), rootfs_create_entry(self, "dev/", "tty", INODE_TYPE_FILE));
     vfs_mount(sio_get_vfs_reg(), rootfs_create_entry(self, "dev/", "log", INODE_TYPE_FILE));
+    kbd_vfs_init();
     vfs_mount(kbd_get_vfs_reg(), rootfs_create_entry(self, "dev/", "kbd", INODE_TYPE_FILE));
 }

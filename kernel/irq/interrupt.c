@@ -87,8 +87,10 @@ void interrupt(struct int_handler_state* state) {
     // interrupt request and syscall could happen at same time
     // clear interrupt pending from controller and process interrupts
     if(irq_pending(KEYBOARD_IRQ_ID)) {
-        irq_clear(KEYBOARD_IRQ_ID);
+        map_page_zero(SCANCODE_PAGE);
         u8 scancode = *(SCANCODE_ADDR);
+        map_page_zero(ILLEGAL_PAGE);
+        irq_clear(KEYBOARD_IRQ_ID); // clear after read
         print_scancode(scancode);
     }
 

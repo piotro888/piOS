@@ -1,6 +1,7 @@
 #include "keyboard.h"
 #include <driver/tty.h>
 #include <fs/kbd.h>
+#include <irq/interrupt.h>
 
 #define RELEASE_SCANCODE 0xF0
 #define EXTENDED_SCANCODE 0xE0
@@ -15,7 +16,7 @@
 #define ARR_RIGHT_ESCANCODE 0x74
 
 const char printable_scancodes[] = {
-    ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '\t', '`', 
+    ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '\t' ,'`', ' ',
     ' ', ' ', ' ', ' ', ' ', 'q', '1', ' ', ' ', ' ', 'z', 's', 'a', 'w', '2', ' ',
     ' ', 'c', 'x', 'd', 'e', '4', '3', ' ', ' ', ' ', 'v', 'f', 't', 'r', '5', ' ',
     ' ', 'n', 'b', 'h', 'g', 'y', '6', ' ', ' ', ' ', 'm', 'j', 'u', '7', '8', ' ',
@@ -25,7 +26,7 @@ const char printable_scancodes[] = {
 };
 
 const char shift_scancodes[] = {
-    ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '\t', '~', 
+    ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '\t', '~', ' ',
     ' ', ' ', ' ', ' ', ' ', 'Q', '!', ' ', ' ', ' ', 'Z', 'S', 'A', 'W', '@', ' ',
     ' ', 'C', 'X', 'D', 'E', '$', '#', ' ', ' ', ' ', 'V', 'F', 'T', 'R', '%', ' ',
     ' ', 'N', 'B', 'H', 'G', 'Y', '^', ' ', ' ', ' ', 'M', 'J', 'U', '&', '*', ' ',
@@ -106,4 +107,9 @@ void print_scancode(u8 scancode) {
         send_key(outc);
     }
     prev_scancode = scancode;
+}
+
+void keyboard_init() {
+    irq_clear(KEYBOARD_IRQ_ID);
+    irq_mask(KEYBOARD_IRQ_ID, 1);
 }
