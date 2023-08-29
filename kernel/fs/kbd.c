@@ -1,6 +1,7 @@
 #include "kbd.h"
 #include <fs/vfs.h>
 #include <fs/vfs_async.h>
+#include <proc/sched.h>
 #include <libk/types.h>
 #include <libk/con/spinlock.h>
 #include <libk/con/semaphore.h>
@@ -39,9 +40,12 @@ int kbd_submit_req(struct vfs_async_req_t* req) {
         return -ENOSUP;
 
     semaphore_down(&insert_lock);
-    if (req->flags & VFS_ASYNC_FLAG_WANT_WOULDBLOCK && list_read_pending > ringbuff_length(&c_buff))
+
+    if (req->flags & VFS_ASYNC_FLAG_WANT_WOULDBLOCK && list_read_pending >= ringbuff_length(&c_buff)) {
+        semaphore_up(&insert_lock);
         return -EWOULDBLOCK;
-    list_read_pending += list_read_pending;
+    }
+    list_read_pending += req->size;
     
     list_append(&req_list, req);
     semaphore_up(&list_sema);
@@ -50,7 +54,7 @@ int kbd_submit_req(struct vfs_async_req_t* req) {
     return 0;
 }
 
-void kbd_thread_loop() {
+void __attribute__((noreturn)) kbd_thread_loop() {
     for(;;) {
         semaphore_down(&list_sema);
 
@@ -61,12 +65,15 @@ void kbd_thread_loop() {
             semaphore_down(&data_available);
 
         ASSERT(req->pid == 0); // only reads to kernel buffer are supported
+        semaphore_down(&insert_lock);
         ssize_t res = ringbuff_read(&c_buff, req->vbuff, req->size);
 
         if(ringbuff_length(&c_buff))
             semaphore_binary_up(&data_available);
         
-        list_read_pending -= res;
+        list_read_pending -= req->size;
+        semaphore_up(&insert_lock);
+
         list_remove(&req_list, req_list.first);
 
         vfs_async_finalize(req, req->size);
@@ -95,9 +102,11 @@ const struct vfs_reg* kbd_get_vfs_reg() {
 
 
 void kbd_vfs_init() {
+    list_init(&req_list);
     ringbuff_init(&c_buff, BUFF_SIZE);
     semaphore_init(&data_available);
     semaphore_init(&list_sema);
     semaphore_init(&insert_lock);
     semaphore_up(&insert_lock);
+    make_kernel_thread("fs::kbd", kbd_thread_loop);
 }

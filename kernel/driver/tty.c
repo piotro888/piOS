@@ -241,7 +241,11 @@ void __attribute__((noreturn)) tty_driver_thread_read() {
             ASSERT(!(req->flags & VFS_ASYNC_FLAG_WANT_WOULDBLOCK));
             semaphore_down(&read_data_signal);
         }
+
+        semaphore_down(&insert_lock);
         size_t res = ringbuff_read(&read_rb, req->vbuff, req->size);
+        read_queue_buff -= req->size;
+        semaphore_up(&insert_lock);
 
         list_remove(&req_read_list, req_read_list.first);
         vfs_async_finalize(req, res);
@@ -255,6 +259,7 @@ ssize_t tty_submit_req(struct vfs_async_req_t* req) {
             semaphore_up(&insert_lock);
             return -EWOULDBLOCK;
         }
+        read_queue_buff += req->size;
         list_append(&req_read_list, req);
         semaphore_up(&list_write_sema);
     } else if (req->type == VFS_ASYNC_TYPE_WRITE) {
