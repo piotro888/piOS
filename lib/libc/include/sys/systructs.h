@@ -1,6 +1,7 @@
 #ifndef __SYS_SYSSTRUCTS_H
 #define __SYS_SYSSTRUCTS_H
 
+// procinfo
 struct sys_proc_info {
     unsigned pid;
     unsigned short type;
@@ -11,5 +12,7 @@ struct sys_proc_info {
     unsigned prog_pages_mapped;
 };
 
+// fcntl
+#define O_NONBLOCK 1
 
 #endif

@@ -6,6 +6,7 @@
 #include <libk/string.h>
 #include <proc/proc.h>
 #include <proc/sched.h>
+#include <sys/systructs.h>
 
 static struct list mount_list;
 
@@ -68,6 +69,8 @@ ssize_t vfs_read_blocking(struct proc_file* file, int pid, void* buff, size_t si
     req->vbuff = buff;
     req->size = size;
     req->flags = 0;
+    if (file->fcntl_flags & O_NONBLOCK)
+        req->flags |= VFS_ASYNC_FLAG_WANT_WOULDBLOCK;
     req->fin_sema = lock;
 
     semaphore_init(lock);
@@ -105,6 +108,8 @@ ssize_t vfs_write_blocking(struct proc_file* file, int pid, void* buff, size_t s
     req->vbuff = buff;
     req->size = size;
     req->flags = 0;
+    if (file->fcntl_flags & O_NONBLOCK)
+        req->flags |= VFS_ASYNC_FLAG_WANT_WOULDBLOCK;
     req->fin_sema = lock;
 
     semaphore_init(lock);
@@ -141,6 +146,8 @@ ssize_t vfs_read_async(struct proc_file* file, int pid, void* buff, size_t size,
     req->vbuff = buff;
     req->size = size;
     req->flags = 0;
+    if (file->fcntl_flags & O_NONBLOCK)
+        req->flags |= VFS_ASYNC_FLAG_WANT_WOULDBLOCK;
     req->fin_sema = NULL;
     int id = req->req_id;
 
@@ -170,6 +177,8 @@ ssize_t vfs_write_async(struct proc_file* file, int pid, void* buff, size_t size
     req->vbuff = buff;
     req->size = size;
     req->flags = 0;
+    if (file->fcntl_flags & O_NONBLOCK)
+        req->flags |= VFS_ASYNC_FLAG_WANT_WOULDBLOCK;
     req->fin_sema = NULL;
 
     int id = req->req_id;

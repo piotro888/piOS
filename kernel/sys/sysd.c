@@ -120,6 +120,21 @@ int process_syscall(struct proc_state* state) {
             // req not allocated
             break;
         }
+        case SYS_FCNTL: {
+            if (!validate_fd(state->regs[1])) {
+                state->regs[0] = -EBADFD;
+                break;
+            }
+            struct proc_file* file = &current_proc->open_files[state->regs[1]];
+
+            if(state->regs[2] != (unsigned) -1) {
+                file->fcntl_flags = state->regs[2];
+                log("fcntl %x", state->regs[2]);
+            }
+
+            state->regs[0] = file->fcntl_flags;
+            break;
+        }
         case SYS_PROCINFO: {
             struct sys_proc_info proc_info;
             

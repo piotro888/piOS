@@ -3,6 +3,7 @@
 #include <sys/sys.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 
 #define __FILE_BUFF_SIZE 64
 
@@ -181,4 +182,16 @@ int fputc(int ch, FILE *stream) {
 
 int fputs(const char* str, FILE *stream) {
     return fwrite(str, strlen(str), 1, stream) ?: EOF;
+}
+
+int fcntl(FILE* file, unsigned mode, unsigned flags) {
+    if (mode == F_GETFL) {
+        return sys_fcntl(file->file_fd, (unsigned) -1);
+    } else if (mode == F_SETFL) {
+        int res = sys_fcntl(file->file_fd, flags);
+        if (res < 0)
+            return res;
+        return 0;
+    }
+    return 0;
 }
