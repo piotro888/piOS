@@ -83,8 +83,12 @@ int process_syscall(struct proc_state* state) {
                 state->regs[3]
             );
 
-            if (ks_buff)
+            if (ks_buff) {
+                if (r > 0)
+                    memcpy_to_userspace(current_proc, state->regs[2], ks_buff, r);
                 kfree(ks_buff);
+            }
+
             state->regs[0] = r;
             break;
         }
