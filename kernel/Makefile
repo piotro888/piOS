@@ -44,6 +44,7 @@ SOURCES=\
 	proc/cswitch.S \
 	proc/elf.c \
 	proc/sched.c \
+	proc/signal.c \
 	proc/virtual.c\
 	sys/sysd.c
 

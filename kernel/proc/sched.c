@@ -124,6 +124,10 @@ int make_kernel_thread(char* name, void __attribute__((noreturn)) (*entry)()) {
     // thread is ready to execute now
     p->state = PROC_STATE_RUNNABLE;
 
+    list_init(&p->signal_queue); // not supported
+    semaphore_init(&p->signal_sema);
+    p->sighandler = NULL;
+
     strcpy(p->name, name);
 
     list_append(&proc_list, p);
@@ -159,6 +163,10 @@ struct proc* sched_init_user_thread() {
 
     p->state = PROC_STATE_UNLOADED;
     p->name[0] = '\0';
+
+    list_init(&p->signal_queue);
+    semaphore_init(&p->signal_sema);
+    p->signals_hold = 0;
 
     list_append(&proc_list, p);
     return p;

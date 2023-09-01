@@ -6,7 +6,9 @@
 #include <libk/assert.h>
 #include <libk/types.h>
 #include <libk/log.h>
+#include <libk/kmalloc.h>
 #include <proc/sched.h>
+#include <proc/signal.h>
 #include <proc/proc.h>
 #include <proc/virtual.h>
 #include <irq/timer.h>
@@ -150,6 +152,15 @@ _Noreturn void int_sys_call() {
     int_disable();
     int_no_proc_modify = 1;
     memcpy(&current_proc->proc_state, &current_proc->syscall_state, sizeof(struct proc_state));
+
+    if (current_proc->signal_queue.first != NULL && !current_proc->signals_hold && current_proc->sighandler) {
+        // signall pending - switch to handler
+        signal_handler_enter(current_proc, current_proc->signal_queue.first->val);
+        kfree(current_proc->signal_queue.first->val);
+        list_remove(&current_proc->signal_queue, current_proc->signal_queue.first);
+        ASSERT(current_proc->signal_sema.count > 0);
+        current_proc->signal_sema.count--;
+    }
 
     current_proc->state = PROC_STATE_RUNNABLE;
 

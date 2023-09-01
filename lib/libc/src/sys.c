@@ -59,3 +59,16 @@ int sys_procinfo(unsigned pid, struct sys_proc_info* proc_info) {
 int sys_pgmap(int page) {
     return syscall_raw(SYS_PGMAP, page, 0, 0, 0);
 }
+
+int sys_sigsend(int pid, unsigned type, unsigned number) {
+    return syscall_raw(SYS_SIGSEND, pid, type, number, 0);
+}
+
+void* sys_sigaction(void (*handler)(struct signal*, int async)) {
+    // FIXME: Compiler program space bug again :ccc (/4)
+    return (void*) syscall_raw(SYS_SIGACTION, ((unsigned)handler)/4, 0, 0, 0);
+}
+
+int sys_sigwait(struct signal* result) {
+    return syscall_raw(SYS_SIGWAIT, (unsigned)result, 0, 0, 0);
+}

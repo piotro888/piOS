@@ -12,5 +12,9 @@
 #define SYS_PROCINFO 8
 #define SYS_PGMAP 9
 #define SYS_PGUNMAP 10
+#define SYS_SIGSEND 11
+#define SYS_SIGWAIT 12
+#define SYS_SIGACTION 13
+#define SYS_SIGHDLRRET 14
 
 #endif

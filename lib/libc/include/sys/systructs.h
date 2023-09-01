@@ -15,4 +15,12 @@ struct sys_proc_info {
 // fcntl
 #define O_NONBLOCK 1
 
+// sig
+
+struct signal {
+    unsigned type;
+    unsigned number;
+};
+
+
 #endif
