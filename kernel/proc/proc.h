@@ -52,6 +52,7 @@ struct proc {
     struct semaphore signal_sema;
 
     void* load_brk;
+    unsigned long alarm_ticks;
 };
 
 #define PROC_STATE_UNLOADED 0

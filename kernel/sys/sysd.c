@@ -8,6 +8,7 @@
 #include <proc/virtual.h>
 #include <fs/vfs.h>
 #include <fs/vfs_async.h>
+#include <irq/timer.h>
 
 #include <libk/kmalloc.h>
 #include <libk/assert.h>
@@ -220,6 +221,18 @@ int process_syscall(struct proc_state* state) {
             list_remove(&current_proc->signal_queue, current_proc->signal_queue.first);
             state->regs[0] = 0;
             break;
+        }
+        case SYS_CLOCKTICKS: {
+            // TODO: atomic, or check if high changed in this case
+            state->regs[0] = (unsigned int) sys_ticks;
+            state->regs[1] = (unsigned int) (sys_ticks << 16u);
+            break;
+        }
+        case SYS_ALARMSET: {
+            unsigned long alarm_val = ((unsigned long) state->regs[2] << 16u) | (unsigned long) state->regs[1];
+            // TODO: atomic set
+            current_proc->alarm_ticks = alarm_val;
+            break; 
         }
         default: {
             log("PID: %d Illegal syscall (%d)", current_proc->pid, sysno);

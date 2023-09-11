@@ -20,5 +20,7 @@ int sys_sigsend(int pid, unsigned type, unsigned number);
 void* sys_sigaction(void (*handler)(struct signal*, int async));
 #define sys_sighdlasyncret() __asm__ volatile ("ldi r0, 14\nsys");
 int sys_sigwait(struct signal* result);
+void sys_clockticks(unsigned long* time);
+void sys_alarmset(unsigned long ticks);
 
 #endif

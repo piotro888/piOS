@@ -9,7 +9,7 @@
 #define TIMER_CLK_DIV (volatile u16*) 0x12
 #define TIMER_AUTO_RESET (volatile u16*) 0x14
 
-unsigned int sys_ticks = 0;
+unsigned long sys_ticks = 0;
 
 void timer_init() {
     map_page_zero(TIMER_PAGE);
@@ -26,5 +26,3 @@ void timer_init() {
 
     map_page_zero(ILLEGAL_PAGE);
 }
-
-

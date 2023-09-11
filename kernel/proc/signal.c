@@ -18,7 +18,7 @@ void signal_send(struct proc* proc, struct signal* signal) {
 
 void signal_handler_enter(struct proc* proc, struct signal* signal) {
     // process must be set to userspace state here, execute just before cswitch
-    log_irq("sighaenter %x %x", proc->proc_state.regs[7], proc->proc_state.pc);
+    log_irq("sighaenter %x %x >%x", proc->proc_state.regs[7], proc->proc_state.pc, proc->sighandler);
     proc->signals_hold = 1;
     unsigned sp = proc->proc_state.regs[7];
     sp -= 4; // prologue safe

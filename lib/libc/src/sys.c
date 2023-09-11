@@ -66,9 +66,28 @@ int sys_sigsend(int pid, unsigned type, unsigned number) {
 
 void* sys_sigaction(void (*handler)(struct signal*, int async)) {
     // FIXME: Compiler program space bug again :ccc (/4)
-    return (void*) syscall_raw(SYS_SIGACTION, ((unsigned)handler)/4, 0, 0, 0);
+    return (void*) (syscall_raw(SYS_SIGACTION, ((unsigned)handler)/4, 0, 0, 0)*4);
 }
 
 int sys_sigwait(struct signal* result) {
     return syscall_raw(SYS_SIGWAIT, (unsigned)result, 0, 0, 0);
+}
+
+void sys_clockticks(unsigned long* time) {
+    unsigned int ret_low, ret_high;
+    
+    __asm__ volatile (
+        " ldi r0, 0xf \n"
+        " sys \n"
+        " mov %0, r0 \n"
+        " mov %1, r1 \n"
+        : "=r"(ret_low), "=r"(ret_high)
+        :
+        : "r0", "r1"
+    );
+    *time = (unsigned long) ret_low | ((unsigned long)ret_high << 16ul);
+}
+
+void sys_alarmset(unsigned long ticks) {
+    syscall_raw(SYS_ALARMSET, (unsigned int) ticks, (unsigned int) (ticks>>16ul), 0, 0);
 }

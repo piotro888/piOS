@@ -13,7 +13,8 @@ SOURCES_U=\
 	printf.c \
 	stdio.c \
 	string.c \
-	sys.c
+	sys.c \
+	unistd.c
 
 SOURCES_K=\
 	string.c

@@ -4,6 +4,8 @@
 #include <libk/kmalloc.h>
 #include <libk/list.h>
 #include <libk/assert.h>
+#include <irq/timer.h>
+#include <proc/signal.h>
 #include <proc/virtual.h>
 
 /*
@@ -59,6 +61,12 @@ void sched_pick_next() {
 
         // check if valid to run
         struct proc* lproc = (struct proc*)last_element->val;
+
+        if(lproc->alarm_ticks && (unsigned int)lproc->alarm_ticks <= (unsigned int)sys_ticks) {
+            struct signal alarm_sig = {SIG_TYPE_ALARM, (unsigned int) lproc->alarm_ticks};
+            signal_send(lproc, &alarm_sig);
+            lproc->alarm_ticks = 0;
+        }
 
         // this process is valid to run
         if(lproc->state == PROC_STATE_RUNNABLE || lproc->state == PROC_STATE_SYSCALL)
