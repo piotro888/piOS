@@ -33,7 +33,7 @@ void sys_print(const char* str) {
 }
 
 int sys_open(const char* path) {
-    return syscall_raw(SYS_OPEN, (int)path, strlen(path), 0, 0);
+    return syscall_raw(SYS_OPEN, (int)path, strlen(path)+1, 0, 0);
 }
 
 int sys_close(int fd) {
@@ -90,4 +90,16 @@ void sys_clockticks(unsigned long* time) {
 
 void sys_alarmset(unsigned long ticks) {
     syscall_raw(SYS_ALARMSET, (unsigned int) ticks, (unsigned int) (ticks>>16ul), 0, 0);
+}
+
+unsigned sys_mqcreat() {
+    return syscall_raw(SYS_MQCREAT, 0, 0, 0, 0);
+}
+
+int sys_mqsend(unsigned mq_id, int type, size_t size, void* data) {
+    return syscall_raw(SYS_MQSEND, mq_id, 0, 0, 0);
+}
+
+int sys_mqrecv(unsigned mq_id, struct msg* buff, size_t size, int nonblock) {
+    return syscall_raw(SYS_MQRECV, 0, 0, 0, 0);
 }

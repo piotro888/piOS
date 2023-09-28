@@ -25,6 +25,7 @@ SOURCES=\
 	fs/rootfs.c \
 	fs/sio.c \
 	fs/tar.c \
+	fs/tmp.c \
 	fs/vfs.c \
 	fs/vfs_async.c \
 	irq/interrupt.c \

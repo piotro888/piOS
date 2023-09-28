@@ -8,6 +8,7 @@
 
 #include <fs/kbd.h>
 #include <fs/sio.h>
+#include <fs/tmp.h>
 #include <driver/tty.h>
 
 #include <libk/kprintf.h>
@@ -81,6 +82,9 @@ void rootfs_create(struct vnode* self) {
     list_init(&in_list);
     rootfs_create_entry(self, "", "", INODE_TYPE_DIRECTORY);
     rootfs_create_entry(self, "", "dev/", INODE_TYPE_DIRECTORY);
+    
+    tmp_init();
+    vfs_mount(tmp_get_vfs_reg(), rootfs_create_entry(self, "", "tmp/", INODE_TYPE_DIRECTORY));
 
     log("mounting system devices");
     vfs_mount(tty_get_vfs_reg(), rootfs_create_entry(self, "dev/", "tty", INODE_TYPE_FILE));

@@ -18,7 +18,7 @@ void list_append(struct list* list, void* val);
 void list_remove(struct list* list, struct list_node* list_node);
 
 #define list_foreach(list) for(struct list_node* it=(list)->first; it != NULL; it = it->next)
-#define LIST_FOREACH_VAL(type) (type) it->val
-#define LIST_FOREACH_NODE it
+#define LIST_FOREACH_VAL(type) ((type) it->val)
+#define LIST_FOREACH_NODE (it)
 
 #endif
