@@ -241,11 +241,25 @@ char* vfs_abs_path_alloc(struct inode* inode) {
 
 struct vnode* vfs_vnode_for(const char* path) {
     struct vnode* best_match = NULL;
-    unsigned int match_len = 0;
+    unsigned int match_slash_cnt = 0;
+
     list_foreach(&mount_list) {
         struct vnode* itv = LIST_FOREACH_VAL(struct vnode*);
-        if (strcnt(itv->abs_mount_path, '/') > match_len && !strncmp(itv->abs_mount_path, path, strlen(itv->abs_mount_path))) {
-            match_len = strcnt(itv->abs_mount_path, '/');
+        if (strcnt(itv->abs_mount_path, '/') > match_slash_cnt
+           && !strncmp(itv->abs_mount_path, path, strlen(itv->abs_mount_path))) {
+            // above if finds mount point with largest number of slashes, that is a prefix of searched path
+
+            // match last segment in mount point to path. (it may be without slash at end; and prefix could incorrectly match)
+            const char* path_match_segment_end = strchr(path+strlen(itv->abs_mount_path)-1, '/');
+            if (!path_match_segment_end)
+                path_match_segment_end = path+strlen(path);
+
+            size_t full_match_len = path_match_segment_end-path;
+
+            if (strncmp(itv->abs_mount_path, path, full_match_len))
+                continue;
+
+            match_slash_cnt = strcnt(itv->abs_mount_path, '/');
             best_match = itv;
         }
     }
