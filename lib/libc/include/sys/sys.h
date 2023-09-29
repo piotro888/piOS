@@ -22,5 +22,8 @@ void* sys_sigaction(void (*handler)(struct signal*, int async));
 int sys_sigwait(struct signal* result);
 void sys_clockticks(unsigned long* time);
 void sys_alarmset(unsigned long ticks);
+unsigned sys_mqcreat();
+int sys_mqsend(unsigned mq_id, int type, size_t size, void* data);
+int sys_mqrecv(unsigned mq_id, struct msg* buff, size_t size, int nonblock);
 
 #endif

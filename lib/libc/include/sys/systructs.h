@@ -22,5 +22,12 @@ struct signal {
     unsigned number;
 };
 
+// mq
+struct msg {
+    unsigned id;
+    unsigned type;
+    unsigned size;
+    char data[];
+};
 
 #endif

@@ -9,12 +9,14 @@
 #include <fs/vfs.h>
 #include <fs/vfs_async.h>
 #include <irq/timer.h>
+#include <sys/mq.h>
 
 #include <libk/kmalloc.h>
 #include <libk/assert.h>
 #include <libk/con/blockq.h>
 #include <libk/log.h>
 #include <libk/kmalloc.h>
+#include <libk/math.h>
 
 int process_syscall(struct proc_state* state) {
     int sysno = state->regs[0];
@@ -233,6 +235,45 @@ int process_syscall(struct proc_state* state) {
             // TODO: atomic set
             current_proc->alarm_ticks = alarm_val;
             break; 
+        }
+        case SYS_MQCREAT: {
+            state->regs[0] = mqs_create();
+            break;
+        }
+        case SYS_MQSEND: {
+            void* data = kmalloc(state->regs[3]);
+            memcpy_from_userspace(data, current_proc, state->regs[6], state->regs[3]);
+
+            struct mq_msg msg = {
+                0,
+                state->regs[2],
+                state->regs[3],
+                data
+            };
+            state->regs[0] = mq_push(state->regs[1], msg);
+            break;
+        }
+        case SYS_MQRECV: {
+            struct mq_msg* res = NULL;
+            if (state->regs[6])
+                res = mq_pop_nonblock(state->regs[1]);
+            else
+                res = mq_pop(state->regs[1]);
+
+            if(!res) {
+                state->regs[0] = -EINVAL;
+                break;
+            }
+
+            size_t size = MIN(res->size, state->regs[2]);
+            memcpy_to_userspace(current_proc, state->regs[3], res, 6);
+            memcpy_to_userspace(current_proc, state->regs[3]+6, res->data, size);
+
+            kfree(res);
+            kfree(res->data);
+
+            state->regs[0] = 0;
+            break;
         }
         default: {
             log("PID: %d Illegal syscall (%d)", current_proc->pid, sysno);

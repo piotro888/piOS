@@ -18,5 +18,9 @@
 #define SYS_SIGHDLRRET 0xe
 #define SYS_CLOCKTICKS 0xf
 #define SYS_ALARMSET 0x10
+#define SYS_MQCREAT 0x11
+#define SYS_MQSEND 0x12
+#define SYS_MQRECV 0x13
+
 
 #endif

@@ -47,6 +47,7 @@ SOURCES=\
 	proc/sched.c \
 	proc/signal.c \
 	proc/virtual.c\
+	sys/mq.c \
 	sys/sysd.c
 
 SRC_LIBS=../lib/libc/build/libc_k.a

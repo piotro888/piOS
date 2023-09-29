@@ -97,9 +97,9 @@ unsigned sys_mqcreat() {
 }
 
 int sys_mqsend(unsigned mq_id, int type, size_t size, void* data) {
-    return syscall_raw(SYS_MQSEND, mq_id, 0, 0, 0);
+    return syscall_raw(SYS_MQSEND, mq_id, type, size, (unsigned) data);
 }
 
 int sys_mqrecv(unsigned mq_id, struct msg* buff, size_t size, int nonblock) {
-    return syscall_raw(SYS_MQRECV, 0, 0, 0, 0);
+    return syscall_raw(SYS_MQRECV, mq_id, size-6, (unsigned) buff, nonblock);
 }

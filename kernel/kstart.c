@@ -18,6 +18,7 @@
 #include <proc/elf.h>
 #include <proc/sched.h>
 #include <proc/virtual.h>
+#include <sys/mq.h>
 
 #include <libk/kmalloc.h>
 #include <libk/kprintf.h>
@@ -51,6 +52,7 @@ void _kstart() {
     spi_init();
     sd_init();
     keyboard_init();
+    mqs_init();
     kprintf("initializing full tty driver\n");
     tty_init_basic();
     tty_init_driver();
