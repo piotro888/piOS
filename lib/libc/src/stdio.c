@@ -1,4 +1,5 @@
 #include "stdio.h"
+#include "unistd.h"
 
 #include <sys/sys.h>
 #include <stdlib.h>
@@ -196,4 +197,8 @@ int fcntl(FILE* file, unsigned mode, unsigned flags) {
         return sys_fcntl(file->file_fd, mode, flags);
     }
     return -1;
+}
+
+int execf(const FILE* file) {
+    return sys_exec(file->file_fd);
 }

@@ -3,6 +3,7 @@
 #include <sys/systructs.h>
 
 #include <driver/tty.h>
+#include <proc/elf.h>
 #include <proc/sched.h>
 #include <proc/signal.h>
 #include <proc/virtual.h>
@@ -289,6 +290,26 @@ int process_syscall(struct proc_state* state) {
             state->regs[0] = state->regs[1]; // return code
             log("exited with return code %d", state->regs[1]);
             current_proc->state = PROC_STATE_DEAD;
+            break;
+        }
+        case SYS_EXEC: {
+            if (!validate_fd(state->regs[1])) {
+                state->regs[0] = -EBADFD;
+                break;
+            }
+            struct proc_file* exe = &current_proc->open_files[state->regs[1]];
+            struct proc* child = elf_load(exe);
+
+            if (!child) {
+                state->regs[0] = -EBADFD;
+                break;
+            }
+
+            child->parent = current_proc->pid;
+            child->state = PROC_STATE_RUNNABLE;
+            
+            state->regs[0] = child->pid;
+
             break;
         }
         default: {

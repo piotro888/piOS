@@ -96,7 +96,9 @@ void __attribute__((noreturn)) init_stage1() {
     struct proc_file* elf_file = &current_proc->open_files[proc_free_fd(current_proc)];
     vfs_open(load_inode, elf_file);
     log("loading ELF %s", elf_file->inode->name);
-    elf_load(elf_file);
+    struct proc* proc = elf_load(elf_file);
+    ASSERT(proc);
+    proc->state = PROC_STATE_RUNNABLE;
     vfs_close(elf_file);
 
     semaphore_init(&sleep);

@@ -108,3 +108,7 @@ _Noreturn void sys_exit(unsigned status) {
     syscall_raw(SYS_EXIT, status, 0, 0, 0);
     __builtin_unreachable();
 }
+
+int sys_exec(int fd) {
+    return syscall_raw(SYS_EXEC, fd, 0, 0, 0);
+}

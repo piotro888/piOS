@@ -141,6 +141,8 @@ int make_kernel_thread(char* name, void __attribute__((noreturn)) (*entry)()) {
 
     strcpy(p->name, name);
 
+    p->parent = 0;
+
     list_append(&proc_list, p);
 
     return p->pid;
@@ -178,6 +180,8 @@ struct proc* sched_init_user_thread() {
     list_init(&p->signal_queue);
     semaphore_init(&p->signal_sema);
     p->signals_hold = 0;
+
+    p->parent = 0;
 
     list_append(&proc_list, p);
     return p;

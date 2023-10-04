@@ -3,4 +3,7 @@
 
 void sleep(unsigned long ticks);
 
+#include "stdio.h"
+int execf(const FILE* file);
+
 #endif

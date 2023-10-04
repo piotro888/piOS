@@ -21,6 +21,6 @@
 #define SYS_MQCREAT 0x11
 #define SYS_MQSEND 0x12
 #define SYS_MQRECV 0x13
-
+#define SYS_EXEC 0x14
 
 #endif

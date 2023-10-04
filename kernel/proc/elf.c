@@ -1,3 +1,5 @@
+#include "elf.h"
+
 #include <string.h>
 #include <fs/vfs.h>
 #include <proc/virtual.h>
@@ -187,31 +189,31 @@ void load_ph(struct proc_file* file, char* ph, struct proc* proc) {
     log_dbg("elf break: 0x%x", proc->load_brk);
 }
 
-int elf_load(struct proc_file* file) {
+struct proc* elf_load(struct proc_file* file) {
     if (vfs_read_blocking(file, 0, buff, HEADER_SIZE) != HEADER_SIZE) {
         log("Elf: file too short");
-        return -1;
+        return NULL;
     }
 
     if (GET_U8(buff, 0) != 0x7f || GET_U8(buff, 1)  != 'E' ||
         GET_U8(buff, 2)  != 'L' || GET_U8(buff, 3)  != 'F') {
         log("ELF: Bad header");
-        return -1;
+        return NULL;
     }
 
     if (GET_U8(buff, 4) != ELFCLASS32 || GET_U8(buff, 5) != ELFDATA2LSB || GET_U8(buff, 6) != EV_CURRENT) {
         log("ELF: Unsupported format");
-        return -1;
+        return NULL;
     }
 
     if (GET_U16(buff, EH_OFF_TYPE) != ET_EXEC) {
         log("ELF: Not an executable");
-        return -1;
+        return NULL;
     }
 
     if (GET_U16(buff, EH_OFF_MACHINE) != EM_PCPU) {
         log("ELF: Invalid target machine (expected pcpu:0x888)");
-        return -1;
+        return NULL;
     }
 
     u16 phoff = GET_U16(buff, EH_OFF_PHOFF);
@@ -226,7 +228,5 @@ int elf_load(struct proc_file* file) {
     vfs_seek(file, phoff, SEEK_SET);
     load_ph(file, ph_buff, proc);
 
-    proc->state = PROC_STATE_RUNNABLE;
-
-    return 0;
+    return proc;
 }

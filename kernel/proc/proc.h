@@ -43,6 +43,8 @@ struct proc {
 
     struct proc_file open_files[PROC_MAX_FILES];
 
+    int parent;
+
     // blocking support
     struct semaphore* sema_blocked;
 
