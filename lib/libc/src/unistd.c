@@ -1,6 +1,5 @@
 #include "unistd.h"
 #include <sys/sys.h>
-#include "stdio.h"
 
 void sleep(unsigned long ticks) {
     unsigned long time;

@@ -186,12 +186,14 @@ int fputs(const char* str, FILE *stream) {
 
 int fcntl(FILE* file, unsigned mode, unsigned flags) {
     if (mode == F_GETFL) {
-        return sys_fcntl(file->file_fd, (unsigned) -1);
+        return sys_fcntl(file->file_fd, F_FLAGS, (unsigned) -1);
     } else if (mode == F_SETFL) {
-        int res = sys_fcntl(file->file_fd, flags);
+        int res = sys_fcntl(file->file_fd, F_FLAGS, flags);
         if (res < 0)
             return res;
         return 0;
+    } else if (mode >= F_DRIVER_CUSTOM_START) {
+        return sys_fcntl(file->file_fd, mode, flags);
     }
-    return 0;
+    return -1;
 }

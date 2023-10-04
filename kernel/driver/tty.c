@@ -311,7 +311,8 @@ const struct vfs_reg tty_vfs_reg = {
 
             tty_fs_get_inode,
             NULL,
-            tty_submit_req
+            tty_submit_req,
+            NULL
 };
 
 const struct vfs_reg* tty_get_vfs_reg() {

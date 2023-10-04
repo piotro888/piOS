@@ -81,14 +81,14 @@ ssize_t vfs_read_blocking(struct proc_file* file, int pid, void* buff, size_t si
         kfree(lock);
         return rc;
     }
-    
+
     semaphore_down(lock);
 
     ssize_t res = req->res;
 
     kfree(req);
     kfree(lock);
-    
+
     return res;
 }
 
@@ -120,14 +120,14 @@ ssize_t vfs_write_blocking(struct proc_file* file, int pid, void* buff, size_t s
         kfree(lock);
         return rc;
     }
-    
+
     semaphore_down(lock);
 
     ssize_t res = req->res;
 
     kfree(req);
     kfree(lock);
-    
+
     return res;
 }
 
@@ -184,7 +184,7 @@ ssize_t vfs_write_async(struct proc_file* file, int pid, void* buff, size_t size
     int id = req->req_id;
 
     ssize_t rc = (*file->inode->vnode->reg->async_request)(req);
-    
+
     if(rc < 0) {
         kfree(req);
         return rc;
@@ -213,6 +213,18 @@ ssize_t vfs_seek(struct proc_file* file, ssize_t off, int whence) {
 
 }
 
+int vfs_fio_ctl(struct proc_file* file, int vpid, unsigned type, unsigned number, int fdrel) {
+    if(!file->inode)
+        return -EBADFD;
+    if(!file->inode->vnode->reg->fio_ctl)
+        return -ENOSUP;
+
+    if (fdrel)
+        return (file->inode->vnode->reg->fio_ctl)(file->inode, type, number, file, vpid);  
+    else 
+        return (file->inode->vnode->reg->fio_ctl)(file->inode, type, number, NULL, 0);  
+}
+
 int validate_fd(int fd) {
     return !(fd > PROC_MAX_FILES || fd < 0);
 }
@@ -231,7 +243,7 @@ char* vfs_abs_path_alloc(struct inode* inode) {
 
     char* path_inside_vnode = inode->vnode->reg->get_abs(inode);
     char* vnode_mount = inode->vnode->abs_mount_path;
-    
+
     char* res = kmalloc(strlen(path_inside_vnode)+strlen(vnode_mount)+1);
     strcpy(res, vnode_mount);
     strcpy(res+strlen(vnode_mount), path_inside_vnode);

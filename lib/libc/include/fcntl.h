@@ -3,6 +3,7 @@
 
 #define F_GETFL 1
 #define F_SETFL 2
+#define F_DRIVER_CUSTOM_START 0x100
 
 #include <stdio.h>
 

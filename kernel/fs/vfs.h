@@ -41,6 +41,7 @@ struct vfs_reg {
     char* (*get_abs)(const struct inode* inode);
     
     ssize_t (*async_request)(struct vfs_async_req_t* req);
+    int (*fio_ctl)(const struct inode* inode, unsigned type, unsigned number, struct proc_file* file, int vpid); 
 };
 
 void vfs_init();
@@ -63,6 +64,9 @@ ssize_t vfs_read_blocking(struct proc_file* file, int vpid, void* buff, size_t s
 ssize_t vfs_write_blocking(struct proc_file* file, int vpid, void* buff, size_t size);
 
 ssize_t vfs_seek(struct proc_file* file, ssize_t off, int whence);
+
+int vfs_fio_ctl(struct proc_file* file, int vpid, unsigned type, unsigned number, int fdrel);
+         
 
 struct inode* vfs_get_root_inode();
 

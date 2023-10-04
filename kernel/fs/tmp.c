@@ -100,7 +100,8 @@ const static struct vfs_reg reg = {
 
     tmp_find_inode,
     NULL,
-    tmp_submit_req
+    tmp_submit_req,
+    NULL
 };
 
 const struct vfs_reg* tmp_get_vfs_reg() {

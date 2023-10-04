@@ -13,7 +13,7 @@ int sys_open(const char* path);
 int sys_close(int fd);
 int sys_read(int fd, void* buff, size_t size);
 int sys_write(int fd, const void* buff, size_t size);
-int sys_fcntl(int fd, unsigned flags);
+int sys_fcntl(int fd, unsigned type, unsigned flags);
 int sys_procinfo(unsigned pid, struct sys_proc_info* proc_info);
 int sys_pgmap(int page);
 int sys_sigsend(int pid, unsigned type, unsigned number);

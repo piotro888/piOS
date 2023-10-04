@@ -46,7 +46,7 @@ int process_syscall(struct proc_state* state) {
             memcpy_from_userspace(path, current_proc, state->regs[1], state->regs[2]);
             struct inode* inode = vfs_find_inode(path);
             kfree(path);
-            
+
             int rc = vfs_open(inode, &current_proc->open_files[fd]);
 
             if (rc < 0) {
@@ -133,12 +133,22 @@ int process_syscall(struct proc_state* state) {
             }
             struct proc_file* file = &current_proc->open_files[state->regs[1]];
 
-            if(state->regs[2] != (unsigned) -1) {
-                file->fcntl_flags = state->regs[2];
-                log("fcntl %x", state->regs[2]);
+            if (state->regs[2] == F_FLAGS) {
+                if (state->regs[3] != (unsigned) -1) {
+                    file->fcntl_flags = state->regs[3];
+                }
+                state->regs[0] = file->fcntl_flags;
+            } else if (state->regs[2] >= F_DRIVER_CUSTOM_START) {
+                state->regs[0] = vfs_fio_ctl(
+                        &current_proc->open_files[state->regs[1]],
+                        current_proc->pid,
+                        state->regs[2],
+                        state->regs[3],
+                        1);
+                                                
+            } else {
+                state->regs[0] = -EINVAL; 
             }
-
-            state->regs[0] = file->fcntl_flags;
             break;
         }
         case SYS_PROCINFO: {

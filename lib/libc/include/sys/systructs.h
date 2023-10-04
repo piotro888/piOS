@@ -13,6 +13,8 @@ struct sys_proc_info {
 };
 
 // fcntl
+#define F_FLAGS 0
+#define F_DRIVER_CUSTOM_START 0x100
 #define O_NONBLOCK 1
 
 // sig

@@ -75,7 +75,8 @@ const static struct vfs_reg reg_1 = {
             0,
             serial_fs_get_inode,
             NULL,
-            serial_submit_request
+            serial_submit_request,
+            NULL
 };
 const static struct vfs_reg reg_2 = {
             "serial",
@@ -83,7 +84,8 @@ const static struct vfs_reg reg_2 = {
             (void*) 1,
             serial_fs_get_inode,
             NULL,
-            serial_submit_request
+            serial_submit_request,
+            NULL
 };
 const struct vfs_reg* serial_get_vfs_reg(int devno) {
     if (devno)

@@ -48,8 +48,8 @@ int sys_write(int fd, const void* buff, size_t size) {
     return syscall_raw(SYS_WRITE, fd, (int)buff, size, 0);
 }
 
-int sys_fcntl(int fd, unsigned flags) {
-    return syscall_raw(SYS_FCNTL, fd, flags, 0, 0);
+int sys_fcntl(int fd, unsigned type, unsigned flags) {
+    return syscall_raw(SYS_FCNTL, fd, type, flags, 0);
 }
 
 int sys_procinfo(unsigned pid, struct sys_proc_info* proc_info) {

@@ -33,7 +33,8 @@ const static struct vfs_reg reg = {
 
             sio_fs_get_inode,
             NULL,
-            sio_submit_request
+            sio_submit_request,
+            NULL
 };
 const struct vfs_reg* sio_get_vfs_reg() {
     return &reg;
