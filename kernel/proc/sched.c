@@ -62,6 +62,9 @@ void sched_pick_next() {
         // check if valid to run
         struct proc* lproc = (struct proc*)last_element->val;
 
+        if (lproc->state == PROC_STATE_DEAD)
+            continue;
+
         if(lproc->alarm_ticks && (unsigned int)lproc->alarm_ticks <= (unsigned int)sys_ticks) {
             struct signal alarm_sig = {SIG_TYPE_ALARM, (unsigned int) lproc->alarm_ticks};
             signal_send(lproc, &alarm_sig);

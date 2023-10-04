@@ -285,6 +285,12 @@ int process_syscall(struct proc_state* state) {
             state->regs[0] = 0;
             break;
         }
+        case SYS_EXIT: {
+            state->regs[0] = state->regs[1]; // return code
+            log("exited with return code %d", state->regs[1]);
+            current_proc->state = PROC_STATE_DEAD;
+            break;
+        }
         default: {
             log("PID: %d Illegal syscall (%d)", current_proc->pid, sysno);
             state->regs[0] = -EINVAL;

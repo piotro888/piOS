@@ -33,9 +33,14 @@ __start:
 	; and run
 	jal r6, main
 
+    ; store return code
+    adi r7, r7, -2
+    sto r0, r7, 2
+
     jal r6, _fini
     jal r6, __libc_fini
 
-	; TODO: call exit syscall
-    exit_loop:
-        jmp exit_loop
+	; exit syscall
+    ldo r1, r7, 2
+    ldi r0, 0x7
+    sys

@@ -103,3 +103,8 @@ int sys_mqsend(unsigned mq_id, int type, size_t size, void* data) {
 int sys_mqrecv(unsigned mq_id, struct msg* buff, size_t size, int nonblock) {
     return syscall_raw(SYS_MQRECV, mq_id, size-6, (unsigned) buff, nonblock);
 }
+
+_Noreturn void sys_exit(unsigned status) {
+    syscall_raw(SYS_EXIT, status, 0, 0, 0);
+    __builtin_unreachable();
+}

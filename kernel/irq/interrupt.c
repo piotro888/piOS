@@ -74,8 +74,15 @@ void interrupt(struct int_handler_state* state) {
                 current_proc->pid, current_proc->proc_state.regs[0], current_proc->proc_state.regs[1], current_proc->proc_state.regs[2],
                 current_proc->proc_state.regs[3], current_proc->proc_state.regs[4], current_proc->proc_state.regs[5],
                 current_proc->proc_state.regs[6], current_proc->proc_state.regs[7], current_proc->proc_state.pc);
-        if (IN_KERNEL(current_proc))
+        if (IN_KERNEL(current_proc)) {
             panic("SEGFAULT INSIDE KERNEL");
+        } else {
+            log_irq("process killed by segfault");
+            current_proc->state = PROC_STATE_DEAD;
+            current_proc->proc_state.regs[0] = 139;
+            should_switch_thread = 1;
+            state->irq_flags = 0;
+        }
     }
 
     /* syscall from thread is always just YIELD */
@@ -146,23 +153,28 @@ _Noreturn void int_sys_call() {
 
     log("syscall %x", current_proc->syscall_state.regs[0]);
     process_syscall(&current_proc->syscall_state);
-    log("end %x", current_proc->syscall_state.regs[0]);    
+    log("end %x", current_proc->syscall_state.regs[0]);
 
     // recover user state and return
     int_disable();
     int_no_proc_modify = 1;
-    memcpy(&current_proc->proc_state, &current_proc->syscall_state, sizeof(struct proc_state));
+    
+    if (current_proc->state != PROC_STATE_DEAD) {
+        memcpy(&current_proc->proc_state, &current_proc->syscall_state, sizeof(struct proc_state));
 
-    if (current_proc->signal_queue.first != NULL && !current_proc->signals_hold && current_proc->sighandler) {
-        // signall pending - switch to handler
-        signal_handler_enter(current_proc, current_proc->signal_queue.first->val);
-        kfree(current_proc->signal_queue.first->val);
-        list_remove(&current_proc->signal_queue, current_proc->signal_queue.first);
-        ASSERT(current_proc->signal_sema.count > 0);
-        current_proc->signal_sema.count--;
+        if (current_proc->signal_queue.first != NULL && !current_proc->signals_hold && current_proc->sighandler) {
+            // signall pending - switch to handler
+            signal_handler_enter(current_proc, current_proc->signal_queue.first->val);
+            kfree(current_proc->signal_queue.first->val);
+            list_remove(&current_proc->signal_queue, current_proc->signal_queue.first);
+            ASSERT(current_proc->signal_sema.count > 0);
+            current_proc->signal_sema.count--;
+        }
+
+        current_proc->state = PROC_STATE_RUNNABLE;
+    } else {
+        sched_pick_next();
     }
-
-    current_proc->state = PROC_STATE_RUNNABLE;
 
     // switch_to_userspace expects calls from interrupt handler.
     // syscall kernel process, when resumed from sheduler, has program paging set
