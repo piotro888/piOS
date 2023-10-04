@@ -12,6 +12,7 @@ struct proc_file {
     
     size_t offset;
     unsigned fcntl_flags;
+    void* driver_data;
 };
 
 struct proc_state {

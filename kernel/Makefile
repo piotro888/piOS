@@ -15,6 +15,7 @@ SOURCES=\
 	kstart.c \
 	panic.c \
 	driver/keyboard.c \
+	driver/i2c.c \
 	driver/sd.c \
  	driver/tty.c \
 	driver/serial.c \

@@ -9,6 +9,7 @@
 #include <fs/kbd.h>
 #include <fs/sio.h>
 #include <fs/tmp.h>
+#include <driver/i2c.h>
 #include <driver/tty.h>
 #include <driver/serial.h>
 
@@ -94,4 +95,5 @@ void rootfs_create(struct vnode* self) {
     vfs_mount(kbd_get_vfs_reg(), rootfs_create_entry(self, "dev/", "kbd", INODE_TYPE_FILE));
     vfs_mount(serial_get_vfs_reg(0), rootfs_create_entry(self, "dev/", "ttyS0", INODE_TYPE_FILE));
     vfs_mount(serial_get_vfs_reg(1), rootfs_create_entry(self, "dev/", "ttyS1", INODE_TYPE_FILE));
+    vfs_mount(i2c_get_vfs_reg(), rootfs_create_entry(self, "dev/", "i2c", INODE_TYPE_FILE));
 }
