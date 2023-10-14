@@ -4,7 +4,7 @@
 #include <fs/vfs.h>
 #include <proc/virtual.h>
 
-#define BASE_ADDR_OFF 0x40
+#define BASE_ADDR_OFF 0x4c
 
 #define ADDRESS_PAGE 0x4
 
@@ -14,6 +14,7 @@
 #define STATUS_REG (volatile u8*)(BASE_ADDR_OFF+0x6)
 
 #define BUSY_BIT 0x1
+#define ERR_BIT 0x2
 
 void i2c_write(u8 addr, u8 reg, u8 data) {
     addr <<= 1;
@@ -44,9 +45,15 @@ int i2c_read(u8 addr, u8 reg) {
 
     *STATUS_REG = 0; // write to start operation
 
+    while ((*STATUS_REG) & BUSY_BIT); // wait for result
+    
+    u8 res = *DATA_REG; 
+    
+    int ret = (*STATUS_REG & ERR_BIT) ? -1 : res;
+
     map_page_zero(ILLEGAL_PAGE);
-// to nie dziala naprawic
-    return 0;
+
+    return ret;
 }
 
 struct i2c_drv_dat {
@@ -86,6 +93,7 @@ ssize_t i2c_submit_request(struct vfs_async_req_t* req) {
                 vfs_async_finalize(req, 1);
             }
         }
+        return 0;
     }
    
     vfs_async_finalize(req, 0);
@@ -126,4 +134,3 @@ const static struct vfs_reg reg = {
 const struct vfs_reg* i2c_get_vfs_reg() {
     return &reg;
 }
-
