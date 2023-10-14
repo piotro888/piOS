@@ -42,6 +42,7 @@ ssize_t vfs_open(struct inode* inode, struct proc_file* target) {
     target->inode = inode;
     target->offset = 0;
     target->fcntl_flags = 0;
+    target->driver_data = 0;
 
     return 0;
 }

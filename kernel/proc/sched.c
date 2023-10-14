@@ -180,6 +180,7 @@ struct proc* sched_init_user_thread() {
     list_init(&p->signal_queue);
     semaphore_init(&p->signal_sema);
     p->signals_hold = 0;
+    p->sighandler = NULL;
 
     p->parent = 0;
 
