@@ -175,6 +175,7 @@ int process_syscall(struct proc_state* state) {
                     proc_info.prog_pages_mapped |= (1u<<i);
             }
             proc_info.load_brk = proc->load_brk;
+            proc_info.rc = proc->state == PROC_STATE_DEAD ? proc->proc_state.regs[0] : 0;
             
             memcpy_to_userspace(current_proc, state->regs[2], &proc_info, sizeof(proc_info));
 
