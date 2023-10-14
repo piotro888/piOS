@@ -261,7 +261,7 @@ ssize_t tty_submit_req(struct vfs_async_req_t* req) {
         }
         read_queue_buff += req->size;
         list_append(&req_read_list, req);
-        semaphore_up(&list_write_sema);
+        semaphore_up(&list_read_sema);
     } else if (req->type == VFS_ASYNC_TYPE_WRITE) {
         list_append(&req_write_list, req);
         semaphore_up(&list_write_sema);
