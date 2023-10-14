@@ -82,6 +82,7 @@ void interrupt(struct int_handler_state* state) {
             current_proc->proc_state.regs[0] = 139;
             should_switch_thread = 1;
             state->irq_flags = 0;
+            signal_send_sigchld(current_proc); 
         }
     }
 

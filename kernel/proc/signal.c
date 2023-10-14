@@ -1,6 +1,7 @@
 #include "signal.h"
 #include <string.h>
 #include <irq/interrupt.h>
+#include <proc/sched.h>
 #include <proc/virtual.h>
 #include <libk/assert.h>
 #include <libk/kmalloc.h>
@@ -45,4 +46,20 @@ void signal_handler_return(struct proc* proc) {
     sp += sizeof(struct proc_state) + 4;
     ASSERT(sp == proc->syscall_state.regs[7]); // verify return sp equals saved state
     proc->signals_hold = 0;
+}
+
+void signal_send_sigchld(struct proc* chld) {
+    if (!chld->parent)
+        return;
+
+    struct proc* pp = proc_by_pid(current_proc->parent);
+    
+    if(!pp)
+        return;
+
+    struct signal signal = {
+        SIG_TYPE_CONTROL,
+        SIG_CONTROL_CHLD 
+    };
+    signal_send(pp, &signal);
 }

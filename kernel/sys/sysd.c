@@ -291,6 +291,7 @@ int process_syscall(struct proc_state* state) {
             state->regs[0] = state->regs[1]; // return code
             log("exited with return code %d", state->regs[1]);
             current_proc->state = PROC_STATE_DEAD;
+            signal_send_sigchld(current_proc); 
             break;
         }
         case SYS_EXEC: {

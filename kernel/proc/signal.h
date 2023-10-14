@@ -10,10 +10,13 @@
 #define SIG_TYPE_AIO 8
 #define SIG_TYPE_USER 16
 
+#define SIG_CONTROL_CHLD 1
 
 void signal_send(struct proc* proc, struct signal* signal);
 
 void signal_handler_enter(struct proc* proc, struct signal* signal);
 void signal_handler_return(struct proc* proc);
+
+void signal_send_sigchld(struct proc* chld);
 
 #endif
