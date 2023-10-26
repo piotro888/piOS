@@ -1,53 +1,65 @@
 # piOS
-Operating system for my custom processor - [pcpu](https://github.com/piotro888/pcpu)
+Operating system for my custom processor - [ppcpu](https://github.com/piotro888/ppcpu)
 
-This is my self-educational project. Homemade OS created because I wanted to make something fun for my processor, and got interested in operating systems.
+Stared as homemade OS created because I wanted to make something fun for my processor, and got interested in operating systems.
 
-You can get tools to build and emulate it from here: [pcpu-toolchain](https://github.com/piotro888/pcpu-toolchain)
+Now it is a fully featured operating system that demostrates technical possibilities of PCPU and can be used to easily create useful and complex apps for it.
 
-**In development**, don't expect too much from it ***yet***.
+You can get the toolchain to run it here: [llvm-pcpu](https://github.com/piotro888/llvm-project-pcpu) (full LLVM toolchain) and [pcsn](https://github.com/piotro888/pcsn) (emulator).
 
 ## Features 
-* Runs on 16 bit *pcpu*
-* VGA driver
-* PS/2 Keyboard
-* First userspace process which can be interrupted and resumed
-* Kernel library: printf, malloc, strings, data structures, logs
-* SD card driver over SPI bus
-* TAR filesystem support
+* Runs on 16 bit custom procesoor **pcpu**!
+* Fully isolated userspace processes support
+* IPC mechanisms
+* Hybrid kernel design
+* Virtual filesystem with UNIX-like devices and mounting other FS
+* Basic libc implementation
+* UNIX-like syscalls
+* Async I/O
+* Synchronization primitives
+* Kernel library
+* TAR filesystem support from SD card
+* Multiple peripheral drivers
 
-Not much yet, but the os is in early development stage now. I will keep the list this updated.
+*This is a real OS now, running preemptively multiple isolated processes in userspace, loaded from ELF file on SD card mounted on VFS!*
 
-Runing processes in userspace is supported, so this is a real OS now!
-
-Note that all devices are specific to my dev board.
-
-### Incoming features
-* Kernel threads
-* Kernel synchronization primitives
-* *Main syscall queue and dispatcher*
-* System design documentation
+Note that all devices are currently specific to my dev board / emulator.
 
 ## Build
-Build piOS kernel
+
+Firstly, build C libraries for userspace and kernel
+```bash
+# compile kerel libc
+cd lib/libc/ && make libc_k
+# compile libc, libcrt and all dependencies for userspace
+cd compile_base
+./make_base.sh
+```
+
+Then build piOS kernel
 ```bash
 cd kernel
-# build .hex
+# build build/kernel.elf, build/kernel_data.bin, build/kernel_text.bin
 make
 # or build and upload to dev board
 make upload
-# or build and run in emulator
-make pce
 ```
-If using pce add `test.tar` archive in main directory for sd card emulation.
-## 
+You can use `build/kernel_text.bin` and `build/kerenl_data.bin` for emulating piOS.
+
+Then build your userspace apps (see example in: `userspace/simple_build_example/`).
+
+Move your executable to `base/` directory and then generate tar archive from it using `pack_sd.sh`.
+Flash `test.tar` archive on SD card using `dd` or provide path to it if using emulator.
+
+Don't foreget to rebuild libraries/kernel after changes!
 
 ## OS goals
-* Multiprocessing and networking - `run simple web server in background`
+* ~Multiprocessing~ DONE and networking - `run simple web server in background`
 * UNIX-like shell
-* Virtual file system with UNIX-like devices
-* Virtual memory managment
-* Custom user process managment, without kernel thread for each process
+* ~~Virtual file system with UNIX-like devices~~ DONE
+* ~~Virtual memory managment~~ DONE
+* ~~Custom user process managment, without kernel thread for each process~~
 
 ## Author
-`piOS (C) 2021-2022 by Piotr Wegrzyn`
+Licensed under BSD-2-Clause license
+`piOS (C) 2021-2023 by Piotr Wegrzyn`
